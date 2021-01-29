@@ -1,16 +1,18 @@
 #ignore all the resultant data files
-/project_files/results/graficas
-/project_files/results/results_h
-/project_files/results/results_op/rain_op
-/project_files/results/results_op
+/project_files/results/graficas/
+/project_files/results/results_h/
+/project_files/results/results_op/rain_op/
+/project_files/results/results_op/
 
 #ignore the project variable inputs, including credentials.
-/project_files/inputs
+/project_files/inputs/
 
 #ignore the editable tests
 /project_files/tests/editable_tests/
+/project_files/tests/.ipynb_checkpoints
 
 #ignore folders that should be created after installing package.
 /build
-/dist/
-SHop.egg-info
+/build/lib/SHop
+/dist
+/SHop.egg-info
