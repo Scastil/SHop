@@ -1,0 +1,8 @@
+README.md
+setup.py
+SHop/SHop_src.py
+SHop/__init__.py
+SHop.egg-info/PKG-INFO
+SHop.egg-info/SOURCES.txt
+SHop.egg-info/dependency_links.txt
+SHop.egg-info/top_level.txt
