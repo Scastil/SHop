@@ -5,7 +5,8 @@
 /project_files/results/results_op/
 
 #ignore the project variable inputs, including credentials.
-/project_files/inputs/
+/project_files/inputs/*
+!/project_files/readme.txt
 
 #ignore the editable tests
 /project_files/tests/editable_tests/
