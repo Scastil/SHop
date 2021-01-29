@@ -38,7 +38,7 @@ para alguno de los casos presentados en la tabla:
 - **Inicial Corriente**:
 
 
-### SHop_SM_E260_90m_1h
+### SHop_E260_90m_1h
 
 Este proj corre con una CI inicial en 3 ventanas: -30d, -3d+CI1d -3d+CIpant.
 
@@ -51,30 +51,33 @@ los espacios, deben tener la sgte. estructura: - **nombreruta**: ruta.
 
 - **name_proj**: SHop_E260_90m_1h
     > Nombre del proyecto.
-- **ruta_proj**: /home/socastillogi/jupyter/ensayos/SH_op/SHop_E260_90m_1h/SHop/
+- **ruta_proj**: /home/socastillogi/jupyter/ensayos/SH_op/SHop_E260_90m_1h/SHop/project_files/
     > Ruta donde se almacena el proyecto, donde se guardan todos los archivos.
+- **ruta_md_d**: /home/socastillogi/jupyter/ensayos/SH_op/SHop_E260_90m_1d/SHop/static_inputs/configfile_SHop_E260_90m_1d.md
+    > Ruta del configfile de ejecucion diaria.
 
     
 ## Rutas de ejecucion
 
 Estas cosas solo se leen.
 
-- **ruta_nc**: static_inputs/E260_90m_py3_v111.nc
+- **ruta_nc**: inputs/E260_90m_py3_v111.nc
     > Ruta del .nc de la cuenca para la simulación.
-- **ruta_nc_tramos**: static_inputs/E260_90m_py2_tramos.csv
+- **ruta_nc_tramos**: inputs/E260_90m_py2_tramos.csv
     > Ruta del .csv con la asignacion de tramos que corresponden a estaciones de nivel.
-- **ruta_csv_subbasinmask**: static_inputs/df_E260_90m_py2_subbasins_posmasks.csv
+- **ruta_csv_subbasinmask**: inputs/df_E260_90m_py2_subbasins_posmasks.csv
     > Ruta del .csv con la asignacion de posiciones del nc que corresponden a la subcuenca de cada estacion de nivel.
-- **ruta_curvascalob3**: static_inputs/df_curvascal_frankenstein_20200915.csv
+- **ruta_curvascalob3**: inputs/df_curvascal_frankenstein_20200915.csv
     > Ruta en donde se encuentran el dataframe con coeficientes de curvas de calibracion observada
-- **ruta_modelset**: static_inputs/model_settings_h.json
+- **ruta_modelset**: inputs/model_settings_h.json
     > Ruta de model_settings para configurar ejecución del modelo.
-- **ruta_CI_reglaspant**: static_inputs/CI/reglas_pant/
+- **ruta_CI_reglaspant**: inputs/CI/reglas_pant/
     > Ruta de archivo con reglas de condiciones iniciales para intervalos de lluvia acumulada.
 - **ruta_radardbz**: /var/radar/operacional/
     > Ruta de carpeta con barridos de reflectividad de radar
-- **ruta_credenciales**: static_inputs/credenciales.csv
+- **ruta_credenciales**: inputs/credenciales.csv
     > Ruta de credenciales de acceso a bd.
+   
 
 ## Rutas resultados de ejecución.
 
