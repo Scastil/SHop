@@ -1,6 +1,6 @@
 ## Parametros de calibracion
 
-Cada una se compone de 10 parámetros escalares, los cuales son:
+Cada una se compone de 11 parámetros escalares, los cuales son:
 
 - R[1] : Evaporación.
 - R[2] : Infiltración.
@@ -12,7 +12,7 @@ Cada una se compone de 10 parámetros escalares, los cuales son:
 - R[8] : Vel Cauces.
 - R[9] : Alm capilar maximo.
 - R[10] : Alm gravitacional maximo.
-<!-- - R[11] : Alm maximo en acuifero. -->
+- R[11] : Alm maximo en acuifero.
 
 Los valores de calibración varían de acuerdo a la escala temporal y 
 espacial de ejecución del modelo.  Cada uno de estos parámetros es 
@@ -20,9 +20,9 @@ multiplicado como un escalar por el mapa que componga una variable **X**
 del modelo. 
 
 ################################################################################################
-|Nombre | id| evp | ks_v | kp_v | Kpp_v | v_sup | v_sub | v_supt | v_cau | Hu | Hg |
-|--------:|----:|:---:|:----:|:----:|:-----:|:-----:|:-----:|:------:|:-----:|:--:|:--:|
-| -c   | -p01 | 1.0 | 5.9 | 5.7 | 0.0 | 1.0 | 1.0 | 10.8 | 1.0 | 1.0 | 1.0 |
+|Nombre | id| evp | ks_v | kp_v | Kpp_v | v_sup | v_sub | v_supt | v_cau | Hu | Hg | Hq |
+|--------:|----:|:---:|:----:|:----:|:-----:|:-----:|:-----:|:------:|:-----:|:--:|:--:|:--:|
+| -c   | -p01 | 1.0 | 5.9 | 5.7 | 0.0 | 1.0 | 1.0 | 10.8 | 1.0 | 1.0 | 1.0 | 1.0 |
 
 
 ## C.I.
