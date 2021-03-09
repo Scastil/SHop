@@ -1,0 +1,1 @@
+Aquí se alojan gráficas de mapas de humedad del suelo simulada.

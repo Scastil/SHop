@@ -1,0 +1,1 @@
+Aquí se alojan graficas de comparaciones entre humedad del suelo obs. y sim. en las estaciones asignadas.

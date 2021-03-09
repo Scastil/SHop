@@ -1,0 +1,1 @@
+Aquí se alojan graficas de comparaciones entre Nobs y Nsim en las estaciones asignadas.

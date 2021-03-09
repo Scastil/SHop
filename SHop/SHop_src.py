@@ -1,53 +1,61 @@
 #!/usr/bin/env python
 # -- coding: utf-8 --
 
-import pandas as pd
-from wmf import wmf
-import numpy as np 
-import glob 
-import pylab as pl
-import json
-import MySQLdb
-import csv
-import matplotlib
-import matplotlib.font_manager
-from datetime import timedelta
-import datetime as dt
-import pickle
-import matplotlib.dates as mdates
+# PAQUETES PARA CORRER OP.
 import netCDF4
-import textwrap
+import pandas as pd
+import numpy as np
+import datetime as dt
+import json
+import wmf.wmf as wmf
+import hydroeval
+import glob
+import MySQLdb
+#modulo pa correr modelo
+import hidrologia
+from sklearn.linear_model import LinearRegression 
+import math
+import os
 
+#spatial
+import cartopy.crs as crs
+import geopandas as gpd
+import pyproj
+from pyproj import transform
+from cartopy.feature import ShapelyFeature
+import cartopy.crs as ccrs
+from cartopy.io.shapereader import Reader
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
-import matplotlib 
+import seaborn as sns
+sns.set(style="whitegrid")
+sns.set_context('notebook', font_scale=1.13)
+
+#FORMATO
+# fuente
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.font_manager as fm
 import matplotlib.dates as mdates
 import matplotlib.font_manager as font_manager
-
 font_dirs = ['/home/socastillogi/jupyter/fuentes/AvenirLTStd-Book']
 font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
 font_list = font_manager.createFontList(font_files)
 font_manager.fontManager.ttflist.extend(font_list)
-
 matplotlib.rcParams['font.family'] = 'Avenir LT Std'
-matplotlib.rcParams['font.size']=12.5
+matplotlib.rcParams['font.size']=11
 import pylab as pl 
-#COLOR EDGES
-pl.rc('axes',labelcolor='#4f4f4f')
-pl.rc('axes',linewidth=1.5)
-pl.rc('axes',edgecolor='#bdb9b6')
+#axes
+# pl.rc('axes',labelcolor='#4f4f4f')
+# pl.rc('axes',linewidth=1.5)
+# pl.rc('axes',edgecolor='#bdb9b6')
 pl.rc('text',color= '#4f4f4f')
 
-import os
-import datetime
-import hydroeval
-import hidrologia
-#paquetes toxicos
-# from cprv1 import cprv1
+#avoid warnings
+import warnings
+warnings.filterwarnings('ignore')
 
-#---------------
-#Funciones que se van pasando a py3.
-#---------------
 
 #---------------
 #Funciones base.
@@ -76,7 +84,6 @@ def set_modelsettings(ConfigList):
     wmf.models.separate_fluxes = model_set['separate_fluxes']
     wmf.models.dt = model_set['dt']
 
-
 def round_time(date = dt.datetime.now(),round_mins=5):
     '''
     Rounds datetime object to nearest 'round_time' minutes.
@@ -95,7 +102,6 @@ def round_time(date = dt.datetime.now(),round_mins=5):
         return dt.datetime(date.year, date.month, date.day, date.hour, date.minute - (date.minute % round_mins))
     else:
         return dt.datetime(date.year, date.month, date.day, date.hour, date.minute - (date.minute % round_mins)) + dt.timedelta(minutes=round_mins)
-    
     
 def get_credentials(ruta_credenciales):
     credentials = json.load(open(ruta_credenciales))
@@ -117,7 +123,6 @@ def get_credentials(ruta_credenciales):
             pass
     return host,user,password,db
     
-    
 def coord2hillID(ruta_nc, df_coordxy):
     #lee simubasin pa asociar tramos, saca topologia basica
     cu = wmf.SimuBasin(rute= ruta_nc)
@@ -134,7 +139,7 @@ def coord2hillID(ruta_nc, df_coordxy):
     for index in df_coordxy.index:
         df_ids.loc[index]=cu.hills_own[np.where((coordsY+disty[0]/2>df_coordxy.loc[index].values[1]) & (coordsY-disty[0]/2<df_coordxy.loc[index].values[1]) & (coordsX+distx[0]/2>df_coordxy.loc[index].values[0]) & (coordsX-distx[0]/2<df_coordxy.loc[index].values[0]))[0]].data
     return df_ids
-    
+
 #-----------------------------------
 #-----------------------------------
 #Funciones de lectura del configfile
@@ -1395,6 +1400,7 @@ def get_rainfall2sim(ConfigList,cu,path_ncbasin,starts_m,end, #se corre el bin m
         obj = obj.loc[start:end]
     
     return obj, ruta_out_rain
+
 #-----------------------------------
 #-----------------------------------
 #Funciones de ejecucion modelo
@@ -1434,14 +1440,16 @@ def get_executionlists_all4all(ConfigList,ruta_out_rain,cu,starts_m,end,windows,
         
     return ListEjecs
 
-def get_executionlists_fromdf(ConfigList,ruta_out_rain,cu,starts_m,end,df_executionprops,
+def get_executionlists_fromdf(ConfigList,ruta_out_rain,cu,starts_m,end,df_executionprops,df_xy_estH,
                               warming_steps=48,dateformat_starts = '%Y-%m-%d %H:%M',
-                              path_pant4rules = None):
+                              path_pant4rules = None,fecha_binsto = None):
     #rutas denpasos salida (configfile)
-    ruta_StoOp = get_ruta(ConfigList,'ruta_proj')+get_ruta(ConfigList,'ruta_sto_op')
     ruta_QsimOp = get_ruta(ConfigList,'ruta_proj')+get_ruta(ConfigList,'ruta_qsim_op')
     ruta_QsimH = get_ruta(ConfigList,'ruta_proj')+get_ruta(ConfigList,'ruta_qsim_hist')
+    ruta_StoOp = get_ruta(ConfigList,'ruta_proj')+get_ruta(ConfigList,'ruta_sto_op')
     ruta_MS_H = get_ruta(ConfigList,'ruta_proj')+get_ruta(ConfigList,'ruta_MS_hist')
+    ruta_HSsim_ests_op = get_ruta(ConfigList,'ruta_proj')+get_ruta(ConfigList,'ruta_HSsim_ests_op')
+    ruta_HSsim_ests_hist = get_ruta(ConfigList,'ruta_proj')+get_ruta(ConfigList,'ruta_HSsim_ests_hist')
     pm = wmf.read_mean_rain(ruta_out_rain.split('.')[0]+'.hdr')
 
     #Prepara las listas para setear las configuraciones
@@ -1477,16 +1485,23 @@ def get_executionlists_fromdf(ConfigList,ruta_out_rain,cu,starts_m,end,df_execut
                     pos_bin = np.searchsorted(df_tank.index,pant_sum) - 1
                     CIvar.append(df_tank.loc[df_tank.index[pos_bin]].P50)
         elif CIpath[-7:] == '.StOhdr': #si se asinga
-            f=open(CIpath.split('.')[0]+'.StOhdr')
+            f=open(CIpath)
             filelines=f.readlines()
             f.close()
             IDs=np.array([int(i.split(',')[0]) for i in filelines[5:]])
             fechas=np.array([i.split(',')[-1].split(' ')[1] for i in filelines[5:]])
-            #ultima pos
-            v,r = wmf.models.read_float_basin_ncol(CIpath.split('.')[0]+'.StObin',IDs[-1], cu.ncells, 5)
-            CIvar = v
+            chosen_id = [IDs[-1] if fecha_binsto is None else IDs[np.where(fechas == fecha_binsto.strftime('%Y-%m-%d-%H:%M'))[0][0]]][0]
+            #lectura de pos en el binsto
+            CIvar,r = wmf.models.read_float_basin_ncol(CIpath.split('.')[0]+'.StObin',chosen_id, cu.ncells, 5)
+        
         #Guarda listas de ejecucion
-        ListEjecs.append([cu, CIid, CIvar, ruta_out_rain, PARid, PARvar, npasos, pos_start, STARTid, ruta_StoOp+PARid+'-'+CIid+'-'+STARTid, ruta_QsimOp+PARid+'-'+CIid+'-'+STARTid+'.csv', ruta_QsimH+PARid+'-'+CIid+'-'+STARTid+'.csv', ruta_MS_H+PARid+'-'+CIid+'-'+STARTid+'.csv',warming_steps])
+        ListEjecs.append([cu, CIid, CIvar, ruta_out_rain, PARid, PARvar, npasos, pos_start, STARTid,
+                          ruta_StoOp+PARid+'-'+CIid+'-'+STARTid, ruta_QsimOp+PARid+'-'+CIid+'-'+STARTid+'.csv',
+                          ruta_QsimH+PARid+'-'+CIid+'-'+STARTid+'.csv',ruta_MS_H+PARid+'-'+CIid+'-'+STARTid+'.csv',
+                          warming_steps,
+                          ruta_HSsim_ests_op+PARid+'-'+CIid+'-'+STARTid+'.csv',
+                          ruta_HSsim_ests_hist+PARid+'-'+CIid+'-'+STARTid+'.csv',
+                          df_xy_estH])
 
     return ListEjecs
 
@@ -1506,40 +1521,66 @@ def get_qsim(ListEjecs,set_CI=True,save_hist=True,verbose = True):
             cu.set_Storage(L[2][2], 2)
             cu.set_Storage(L[2][3], 3)
             cu.set_Storage(L[2][4], 4)
-        
+
         #run model
         res = cu.run_shia(L[5],L[3],L[6],L[7],kinematicN=12,
-                          ruta_storage=L[9], ) # se guardan condiciones para la sgte corrida.
+                          ruta_storage=L[9]) # se guardan condiciones para la sgte corrida.
 
-        #save df_simresults
+        #save df_qsimresults
         #operational qsim - without warming steps
-        df = res[1].loc[res[1].index[L[13]:]]
-        df.to_csv(L[10])
-        
-#         print('start: %s, start_index_qsim: %s,start_pos: %s'%(L[7],res[1].index[L[13]:],L[13]))
-        
+        df_qsim = res[1].loc[res[1].index[L[13]:]]
+        df_qsim.to_csv(L[10])
+
+        #save df_HSsimresults
+        #operational HSsim - without warming steps
+        f=open(L[9]+'.StOhdr')
+        filelines=f.readlines()
+        f.close()
+        IDs=np.array([int(i.split(',')[0]) for i in filelines[5:]])
+        fechas=np.array([i.split(',')[-1].split(' ')[1] for i in filelines[5:]])
+        df_HSsim = pd.DataFrame(index = pd.to_datetime(fechas), columns = L[16].index)
+        for index,ID in zip(pd.to_datetime(fechas),IDs):
+            v,r = wmf.models.read_float_basin_ncol(L[9]+'.StObin',ID, cu.ncells, 5)
+            v[2][v[2]> wmf.models.max_gravita[0]] = wmf.models.max_gravita[0][v[2]> wmf.models.max_gravita[0]] #sumideros?
+            df_HSsim.loc[index] = [wmf.cu.basin_extract_var_by_point(cu.structure,(((v[0]+v[2])/(wmf.models.max_capilar+wmf.models.max_gravita))*100),L[16].values[i_esth],3,1,cu.ncells)[0] for i_esth in range(L[16].shape[0])]
+
+        df_HSsim.loc[df_HSsim.index[L[13]:]].to_csv(L[14])
+
         # saving historical data
         if save_hist == False:#se crea
             # qsim
-            df.to_csv(L[11])
+            df_qsim.to_csv(L[11])
+            # hs_sim_ests
+            df_HSsim.to_csv(L[15])
             # hs_sim
-            df_hs = pd.read_csv(L[9].split('.')[0]+'.StOhdr', header = 4, index_col = 5, parse_dates = True, usecols=(1,2,3,4,5,6))
+            df_hs = pd.read_csv(L[9]+'.StOhdr', header = 4, index_col = 5, parse_dates = True, usecols=(1,2,3,4,5,6))
             df_hs.columns = ['t1','t2','t3','t4','t5']
             df_hs.index.name = 'fecha'
             df_hs.to_csv(L[12])
-        else:#if save_hist == True: #s lo actualiza
+        else:
             # qsim_hist
-            df0 = pd.read_csv(L[11], index_col=0, parse_dates= True) #abre archivo hist ya creado (con una corrida guardada.)
-            df0.index = pd.to_datetime(df0.index)
-            df.index = pd.to_datetime(df.index)
-            df.columns = list(map(str,df.columns))
-            df0= df0.append(df)#se agrega corrida actual
-            df0 = df0.reset_index().drop_duplicates(subset='index',keep='last').set_index('index')
-            df0 = df0.dropna(how='all')
-            df0 = df0.sort_index()
-            df0.to_csv(L[11]) # se guarda archivo hist. actualizado
-            
-            # qsim_hist
+            df_qsim0 = pd.read_csv(L[11], index_col=0, parse_dates= True) #abre archivo hist ya creado (con una corrida guardada.)
+            df_qsim0.index = pd.to_datetime(df_qsim0.index)
+            df_qsim.index = pd.to_datetime(df_qsim.index)
+            df_qsim.columns = list(map(str,df_qsim.columns))
+            df_qsim0= df_qsim0.append(df_qsim)#se agrega corrida actual
+            df_qsim0 = df_qsim0.reset_index().drop_duplicates(subset='index',keep='last').set_index('index')
+            df_qsim0 = df_qsim0.dropna(how='all')
+            df_qsim0 = df_qsim0.sort_index()
+            df_qsim0.to_csv(L[11]) # se guarda archivo hist. actualizado
+
+            # HSsim_ests_hist
+            df_HSsim0 = pd.read_csv(L[15], index_col=0, parse_dates= True) #abre archivo hist ya creado (con una corrida guardada.)
+            df_HSsim0.index = pd.to_datetime(df_HSsim0.index)
+            df_HSsim.index = pd.to_datetime(df_HSsim.index)
+            df_HSsim.columns = list(map(str,df_HSsim.columns))
+            df_HSsim0= df_HSsim0.append(df_HSsim)#se agrega corrida actual
+            df_HSsim0 = df_HSsim0.reset_index().drop_duplicates(subset='index',keep='last').set_index('index')
+            df_HSsim0 = df_HSsim0.dropna(how='all')
+            df_HSsim0 = df_HSsim0.sort_index()
+            df_HSsim0.to_csv(L[15]) # se guarda archivo hist. actualizado
+
+            # MSsim_hist
             df_hs0 = pd.read_csv(L[12], index_col=0, parse_dates= True) #abre archivo hist ya creado (con una corrida guardada.)
             df_hs0.index = pd.to_datetime(df_hs0.index)
             df_hs = pd.read_csv(L[9].split('.')[0]+'.StOhdr', header = 4, index_col = 5, parse_dates = True, usecols=(1,2,3,4,5,6))#la nueva
@@ -1557,44 +1598,11 @@ def get_qsim(ListEjecs,set_CI=True,save_hist=True,verbose = True):
 
     return res
 
-#------------------------
-#Funciones de despliegue
-#------------------------
+#------------------------------------------------------------------------
+#Funciones usadas para graficar y generar productos para geoportal
+#------------------------------------------------------------------------
 
-def n2q(level,a,b):
-    Df_Q = a*(level**b)
-    return Df_Q
-
-def plot_Q(start,end,Dt,server,user,passwd,dbname,
-           ListEjecs,cu,ests,colors_d,path_r,path_masks_csv,df_bd,df_est_features,ylims,rutafig=None):
-     #qobs
-#     levels=[]
-#     for est in ests:
-#         selfn = cprv1.Nivel(codigo=est, user='soraya', passwd='12345') 
-#         level=selfn.level(start,end)
-#         levels.append(level)
-    #consulta
-    res = hidrologia.nivel.consulta_nivel(list(map(str,ests)),start,end,server,user,passwd,dbname,
-                                          retorna_niveles_riesgo=False)
-    #cuadrar index y type
-    levels = res.apply(pd.to_numeric, errors='coerce')
-    levels.index = pd.to_datetime(levels.index)
-    levels = levels[~levels.index.duplicated(keep='first')]
-    rng = pd.date_range(levels.index[0],levels.index[-1],freq='1T')
-    df_levels = levels.reindex(rng)
-    #array-like
-    levels = df_levels.T.values
-
-    qs = []
-    for est,l in zip(ests,levels):
-        qs.append(n2q(l,df_est_features.loc[est].a,df_est_features.loc[est].b))
-
-
-    df_qobs = pd.DataFrame(qs).T
-    df_qobs.columns = ests; df_qobs.index = df_levels.index
-    df_qobs = df_qobs.resample(Dt).mean()
-
-    # PMEAN basins
+def get_pradar_withinnc(path_r,cu,start,end,Dt,ests,path_masks_csv=None,df_points = None):
     # abrir bin y records para recorrerlo
     pstruct = wmf.read_rain_struct(path_r)
     pstruct = pstruct.loc[start:end]#quitar el wupt
@@ -1602,52 +1610,532 @@ def plot_Q(start,end,Dt,server,user,passwd,dbname,
     path_bin = path_r.split('.')[0]+'.bin'
     records = pstruct[' Record'].values
 
-    df_posmasks = pd.read_csv(path_masks_csv, index_col=0)
+    if path_masks_csv is not None:
+        df_posmasks = pd.read_csv(path_masks_csv, index_col=0)
 
     for index,record in zip(pstruct.index,records):
         v,r = wmf.models.read_int_basin(path_bin,record,cu.ncells)
         rvec = v/1000.
+        
+        
+        #para subcuencas
+        if path_masks_csv is not None: # se actualiza la media de todas las mascaras en el df.
+            mean = []
+            for est in ests: mean.append(np.sum(rvec*df_posmasks['%s'%est])/float(df_posmasks['%s'%est][df_posmasks['%s'%est]==1].size))
+            df_pbasins.loc[index]=mean  
+        elif df_points is not None:
+            df_pbasins.loc[index] = [wmf.cu.basin_extract_var_by_point(cu.structure,rvec,df_points.loc[ests].values[i_esth],3,1,cu.ncells)[0] for i_esth in range(df_points.loc[ests].shape[0])]
+    return df_pbasins
 
-        mean = []
-        #para todas
+def N2Q(level,a,b):
+    Q = a*(level**b)
+    return Q
 
-        for est in ests:
-            mean.append(np.sum(rvec*df_posmasks['%s'%est])/float(df_posmasks['%s'%est][df_posmasks['%s'%est]==1].size))
-        # se actualiza la media de todas las mascaras en el df.
-        df_pbasins.loc[index]=mean         
+def Q2N(caudal,a,b):
+    N = (caudal/a)**(1/b)
+    return N
 
-    #graficas
-    for ylim,est in zip(ylims[:],ests[:]):
+def consulta_nyqobs(ests,start,end,server,user,passwd,dbname,Dt,df_est_metadatos,ruta_qobs,ruta_nobs,save_hist=True):
+    #consulta nivel
+    res = hidrologia.nivel.consulta_nivel(list(map(str,ests)),start,end,server,user,passwd,dbname,
+                                          retorna_niveles_riesgo=False)
+    #cuadrar index y type
+    levels = res.apply(pd.to_numeric, errors='coerce')
+    levels.index = pd.to_datetime(levels.index)
+    levels = levels[~levels.index.duplicated(keep='first')]
+    rng = pd.date_range(levels.index[0],levels.index[-1],freq='1T')
+    df_nobs = levels.reindex(rng)
+    df_nobs = df_nobs.resample(Dt).mean()
+
+    #caudal
+    df_qobs = pd.DataFrame(index=df_nobs.index)
+    for est,l in zip(ests,df_nobs.T.values):
+        df_qobs[est]= N2Q(l,df_est_metadatos.loc[est].a,df_est_metadatos.loc[est].b)
+
+    # saving historical data
+    if save_hist == False:#se crea
+        df_qobs.to_csv(ruta_qobs)
+        df_nobs.to_csv(ruta_nobs)
+    else:
+        #qobs
+        df_qobs0 = pd.read_csv(ruta_qobs, index_col=0, parse_dates= True) #abre archivo hist ya creado (con una corrida anterior)
+        df_qobs0.index = pd.to_datetime(df_qobs0.index)
+        df_qobs.index = pd.to_datetime(df_qobs.index)
+        df_qobs0= df_qobs0.append(df_qobs)#se agrega consulta actual
+        df_qobs0 = df_qobs0.reset_index().drop_duplicates(subset='index',keep='last').set_index('index')
+        df_qobs0.to_csv(ruta_qobs) # se guarda archivo hist. actualizado
+        #nobs
+        df_nobs0 = pd.read_csv(ruta_nobs, index_col=0, parse_dates= True) #abre archivo hist ya creado (con una corrida anterior)
+        df_nobs0.index = pd.to_datetime(df_nobs0.index)
+        df_nobs.index = pd.to_datetime(df_nobs.index)
+        df_nobs0= df_nobs0.append(df_nobs)#se agrega consulta actual
+        df_nobs0 = df_nobs0.reset_index().drop_duplicates(subset='index',keep='last').set_index('index')
+        df_nobs0.to_csv(ruta_qobs) # se guarda archivo hist. actualizado
+    
+    print('Consulta exitosa de Nobs')
+    return df_nobs,df_qobs
+
+##
+#Funciones sonsulta humedad
+#cuando se migre ese modulo 
+#a rio se eliminaran
+
+def query_mysql(host,user,passw,dbname,query,verbose=False):
+    conn_db = MySQLdb.connect(host,user,passw,dbname)
+    db_cursor = conn_db.cursor ()
+    db_cursor.execute (query)
+    data = db_cursor.fetchall()
+    conn_db.close()
+    fields = [field.lower() for field in list(np.array(db_cursor.description)[:,0])]
+    if len(data) == 0:
+        df_query = pd.DataFrame(columns = fields)
+        if verbose:
+            print ('empty query')
+    else:
+        df_query = pd.DataFrame(np.array(data), columns = fields)
+
+    return df_query
+
+def query_2_dfseries(start,end,freq,host,user,passw,dbname,query):
+    df_query = query_mysql(host,user,passw,dbname,query,verbose=True)
+
+    #se encarga de index y de cuando no hay datos.
+    if df_query.shape[0] == 0:
+        rng = pd.date_range(start,end,freq=freq)
+        df = pd.DataFrame(index = rng, columns=df_query.columns)
+        df = df.drop(['fecha_hora'],axis=1)
+        df.index.name=''
+    else:
+        df = df_query.set_index('fecha_hora')
+        df=df.apply(pd.to_numeric)
+        df.index.name=''
+        rng=pd.date_range(start,end,freq=freq)
+        df=df.reindex(rng)
+    return df
+
+def query_humedad(codeH,freq,host,user,passw,dbname,df_metadata,update_or_save_csv=0,
+                  path_dfh=None,start=None,end=None,calidad=False):   
+    
+    if start is None and end is None:
+        #si no hay 30d.csv tons se consulta nuevo.
+        start = round_time(dt.datetime.now()-pd.Timedelta('30d'))
+        end = round_time(dt.datetime.now())
+    elif update_or_save_csv == 0 and start is None and end is None: # asigna start y end cuando sea necesario
+        #abre csv para saber hasta donde actualizar
+        df_old = pd.read_csv(path_dfh+'%s_30d.csv'%codeH,index_col=0)
+        #se redefine start y end con los df que se guardan y actualizan
+        start = df_old.index[-1]
+        end = round_time(dt.datetime.now())
+        #si el csv tiene mas de 30d sin actualizarse toma ult. 30d
+        actual_timedelta = round_time(dt.datetime.now()) - df_old.index[-1]
+        if actual_timedelta>pd.Timedelta('30d'): 
+            start = round_time(dt.datetime.now()-pd.Timedelta('30d'))
+            end = round_time(dt.datetime.now())
+    else:
+        pass        
+
+    #CONSULTA
+    #query humedad de acuerdo al tipo de sensor y tabla donde guarda datos.
+    if df_metadata.tipo_sensor.loc[codeH] == 1:
+        query = 'select fecha_hora, h1, h2, h3,calidad from humedad_rasp where cliente = "%s" and fecha_hora between "%s" and "%s";'%(codeH,start,end)
+        df_query = query_2_dfseries(start,end,freq,host,user,passw,dbname,query)
+
+    elif df_metadata.tipo_sensor.loc[codeH] == 2:
+        if df_metadata.red.loc[codeH] == 'humedad_laderas_5te_rasp':
+            query = 'select fecha_hora, vw1,vw2,vw3,t1,t2,t3,c1,c2,c3,calidad from humedad_laderas_5te_rasp where cliente = "%s" and fecha_hora between "%s" and "%s";'%(codeH,start,end)
+        else:
+            query = 'select fecha_hora, vw1,vw2,vw3,t1,t2,t3,c1,c2,c3,calidad from humedad_rasp where cliente = "%s" and fecha_hora between "%s" and "%s";'%(codeH,start,end)
+        df_query = query_2_dfseries(start,end,freq,host,user,passw,dbname,query)
+
+    else:
+        if df_metadata.red.loc[codeH] == 'humedad_stevens_laderas_rasp':
+            query = 'select fecha_hora, sh1,sh2,sh3,stc1,stc2,stc3,sc1,sc2,sc3,calidad from humedad_stevens_laderas_rasp where cliente = "%s" and fecha_hora between "%s" and "%s";'%(codeH,start,end)
+        else:
+            query = 'select fecha_hora, sh1,sh2,sh3,stc1,stc2,stc3,sc1,sc2,sc3,calidad from humedad_stevens_rasp where cliente = "%s" and fecha_hora between "%s" and "%s";'%(codeH,start,end)
+
+        df_query = query_2_dfseries(start,end,freq,host,user,passw,dbname,query)
+        df_query[df_query.columns[:3]] = df_query[df_query.columns[:3]]*100.
+    #filtro calidad inicial
+    df_query[df_query<=0] = np.nan
+    df_query[df_query>120.] = np.nan
+
+    # print  (dt.datetime.now()) 
+
+    #query pluvio
+    query = "select fecha,hora,p1/1000,p2/1000 from datos where cliente='%s' and (((fecha>'%s') or (fecha='%s' and hora>='%s')) and ((fecha<'%s') or (fecha='%s' and hora<='%s')))"%(df_metadata.p_asociado.loc[codeH],start.strftime('%Y-%m-%d'),start.strftime('%Y-%m-%d'),start.strftime('%H:%M:%S'),end.strftime('%Y-%m-%d'),end.strftime('%Y-%m-%d'),end.strftime('%H:%M:%S'))
+    P = query_mysql(host,user,passw,dbname,query)
+
+    P.columns=['fecha','hora','p1','p2']
+    nulls = np.where(P[['fecha']]['fecha'].isnull() == True)[0]
+    P= P.drop(nulls)
+    dates = [P['fecha'][i].strftime('%Y-%m-%d') +' '+str(P['hora'][i]).split(' ')[-1][:-3] for i in P.index]
+    P.index = pd.to_datetime(dates)
+    P['fecha_hora']= dates
+    P = P.drop_duplicates(['fecha_hora'],keep='first').asfreq('1T')
+    P = P.drop(['fecha','hora','fecha_hora'],axis=1)
+    rng=pd.date_range(start,end,freq=freq)
+    P=P.reindex(rng)
+
+    #agregar en dfsoil.
+    df_query[['p1','p2']] = P[['p1','p2']]
+
+    #CALIDAD: aplica solo para las primeras 3 (humedad) y ultimas 2 filas (pluvios)
+    #si todo es nan porque no hay datos, pass
+    if np.isnan(df_query.calidad.mean()):
+        pass
+    elif calidad == True:
+        if update_or_save_csv==1:
+            print  (dt.datetime.now())
+            print (u'calidá')
+        #valores de calidad distintos a nan
+        cal_values = np.array(list(map(int,np.unique(df_query.calidad)[np.where(np.isnan(np.unique(df_query.calidad))==False)[0]])))
+        pos_badcal =  np.where((cal_values != 1)&(cal_values != 2))[0]
+        #si hay calidad diferente a 1 y 2, se ejecuta el pedazo de calidad, si no, no.
+        if pos_badcal.size != 0:
+            #para cada valor de calidad dudosa.
+            for val in cal_values[pos_badcal]:
+                #fecha a las que aplica cada codigo de calidad dudosa
+                dates = df_query[df_query.calidad == val].index
+                #dependiendo de cuales sean se hacen nan los valoresde humedad, cuando los malos son solo p1,p2 no se hace nada, por ahora.
+                #se demora mil annos porque toca hacer nan valor a valor de cada date y cada columns.
+                if val == 152:
+                    for date in dates:
+                        df_query[df_query.columns[0]].loc[date]=np.nan
+                        df_query[df_query.columns[1]].loc[date]=np.nan
+                        df_query[df_query.columns[2]].loc[date]=np.nan
+                        df_query[df_query.columns[-2]].loc[date]=np.nan
+                        df_query[df_query.columns[-1]].loc[date]=np.nan
+                if val == 1520:
+                    for date in dates:
+                        df_query[df_query.columns[0]].loc[date]=np.nan
+                        df_query[df_query.columns[1]].loc[date]=np.nan
+                        df_query[df_query.columns[2]].loc[date]=np.nan
+                if val == 1521:
+                    for date in dates:
+                        df_query[df_query.columns[0]].loc[date]=np.nan
+                if val == 1522:
+                    for date in dates:
+                        df_query[df_query.columns[1]].loc[date]=np.nan
+                if val == 1523:
+                    for date in dates:
+                        df_query[df_query.columns[2]].loc[date]=np.nan
+                if val == 1526:
+                    for date in dates:
+                        df_query[df_query.columns[0]].loc[date]=np.nan
+                        df_query[df_query.columns[1]].loc[date]=np.nan
+                if val == 1527:
+                    for date in dates:
+                        df_query[df_query.columns[0]].loc[date]=np.nan
+                        df_query[df_query.columns[2]].loc[date]=np.nan
+                if val == 1528:
+                    for date in dates:
+                        df_query[df_query.columns[1]].loc[date]=np.nan
+                        df_query[df_query.columns[2]].loc[date]=np.nan
+                        
+        if update_or_save_csv==1:
+            print  (dt.datetime.now())
+
+    if update_or_save_csv == 0:
+        #ACTUALIZAR ARCHIVOS OP.
+        df_old = pd.read_csv(path_dfh+'%s_30d.csv'%codeH,index_col=0)
+        df_old=df_old.append(df_query)
+        #borra index repetidos, si los hay - la idea es que no haya pero si los hay no funciona el df.reindex
+        df_old[df_old.index.duplicated(keep='last')]=np.NaN
+        df_old = df_old.dropna(how='all')
+        #reindex
+        #si no hay datos, deja los nan.
+        if df_old[df_old.columns[:-2]].mean().isnull().all() == True:
+            rng=pd.date_range(start,end,freq=freq)
+        else:
+            rng=pd.date_range(df_old.index[0],end,freq=freq)
+        
+        df_old=df_old.reindex(rng)
+        #Guarda el archivo actualizado,pero se descabeza 5min para no aumentar el tamano del .csv op.
+        df_old[end-pd.Timedelta('30d'):end].to_csv(path_dfh+'%s_30d.csv'%codeH)
+        return df_old[end-pd.Timedelta('30d'):end]
+    elif update_or_save_csv == 1:
+        df_query.to_csv(path_dfh+'%s_30d.csv'%codeH)
+        return df_query
+    else:
+        return df_query
+
+#------------------------
+#Funciones para graficas
+#------------------------
+
+def plot_Q(ests,ylims_q,ListEjecs,colors_d,df_est_metadatos,df_bd,df_qobs,df_pbasins,rutafig=None):
+    #grafica caudal sim estaciones validacion
+    for ylim_q,est in zip(ylims_q[:],ests[:]):
         #grafica
-        fig=pl.figure(dpi=90)
+        fig=pl.figure(figsize=(7,4),dpi=90,facecolor='w')
         ax=fig.add_subplot(111)
-        df_qobs[est].plot(ax=ax,c='k',lw=3,label='Qobs')
-        ax.set_ylabel(u'Caudal (m³/s)',fontsize=16)
-        ax.set_ylim(0,ylim)
+        df_qobs[est].plot(ax=ax,c='k',lw=3,label='$\\bf{Qobs}$')
+        ax.set_ylabel(u'Caudal (m³/s)',fontsize=18)
+        ax.set_ylim(0,ylim_q)
         pl.locator_params(axis='y', nbins=4)
-    #     qsim pars
+        #qsim pars
         for color,l_ej in zip(colors_d,ListEjecs):
             #qsim
-            qsim = pd.read_csv(l_ej[-4], index_col=0, parse_dates= True)
-            df_qsim = qsim[df_est_features.tramo]
+            qsim = pd.read_csv(l_ej[10], index_col=0, parse_dates= True)
+            df_qsim = qsim[list(map(str,df_est_metadatos.tramo.values))]
             df_qsim.columns = ests
 
+            #eficiencia
             df2kge= pd.DataFrame([df_qobs[est].values,df_qsim[est].values],index=['obs','sim']).T
-            nse = wmf.__eval_nash__(df2kge.obs.values,df2kge.sim.values)
-            kge = hydroeval.kge(df2kge.dropna().sim.values,df2kge.dropna().obs.values)[0][0]
-#             corrsp = scp.stats.spearmanr(df2kge.dropna().sim.values,df2kge.dropna().obs.values)[0]
-            ax = df_qsim[est].plot(c=color,lw=1.75,label='Qsim_%s%s \nNSE: %s \nKGE: %s'%(l_ej[1],l_ej[4],round(nse,2),round(kge,2)))#0.2,0.5))
+            if df2kge.dropna().shape[0] != 0:    
+                nse = wmf.__eval_nash__(df2kge.obs.values,df2kge.sim.values)
+                kge = hydroeval.kge(df2kge.dropna().sim.values,df2kge.dropna().obs.values)[0][0]
+                #R2
+                regresion_lineal = LinearRegression()
+                regresion_lineal.fit(df2kge.dropna().sim.values.reshape(-1,1), df2kge.dropna().obs.values) 
+                # regresion_lineal.coef_,regresion_lineal.intercept_
+                r2 = regresion_lineal.score(df2kge.dropna().sim.values.reshape(-1,1), df2kge.dropna().obs.values)
+            else: nse = np.nan; kge = np.nan; r2 = np.nan
+            #plot
+            ax = df_qsim[est].plot(c=color,lw=2.25,label='$\\bf{Qsim\_}$$\\bf{%s%s}$ \nNSE: %s \nKGE:  %s \nR²:   %s'%(l_ej[1],l_ej[4],
+                                                                                                   round(nse,2),round(kge,2),
+                                                                                                   round(r2,2)))
 
         ax2=ax.twinx()
-        df_pbasins[est].plot.area(ax=ax2,color=['#164cc8'],alpha=0.2,lw=1)
-        ax2.set_ylim(12*3,0)
-        ax2.set_ylabel(u'Precipitación (mm/h)',fontsize=16)
-        legend = ax.legend(loc=(1.15,-0.01), fontsize=13.15)
-        ax.set_title('Est %s | %s'%(est,df_bd.loc[est].nombreestacion), fontsize=17.5)
+        (df_pbasins[est]*12).plot.area(ax=ax2,alpha = 0.6,color = '#4392d6',lw = 0.1)
+        ax2.set_ylim(12*3*12,0)
+        ax2.set_ylabel(u'Precipitación (mm/h)',fontsize=18)
+        legend = ax.legend(loc=(-0.06,-0.6), fontsize=13.15,ncol=3)
+        ax.set_title('Est %s | %s'%(est,df_bd.loc[est].nombreestacion), fontsize=17.5, y=1.01)#, color='k')
         pl.locator_params(axis='y', nbins=4)
+        ax.grid(False)
+        ax2.grid(False)
 
         if rutafig is not None:
             fig.savefig(rutafig+'qsim_%s.png'%(est),dpi=100,
                     bbox_extra_artists=(legend,),bbox_inches='tight')
         pl.close()
-    print('Graphics are generated.')
+    print('Graphics are generated: Qval')
+
+def plot_Qotros(df_otrostramos,ListEjecs,colors,rutafig=None):
+    #grafica caudal sim estaciones NO validacion
+    for id_est in zip(df_otrostramos.index[:]):
+        #grafica
+        fig=pl.figure(figsize=(7,4),dpi=90,facecolor='w')
+        ax=fig.add_subplot(111)
+        ax.set_ylabel(u'Caudal (m³/s)',fontsize=18)
+    #     ax.set_ylim(0,ylim_q)
+        pl.locator_params(axis='y', nbins=4)
+        #qsim pars
+        for color,l_ej in zip(colors,ListEjecs):
+            #qsim
+            qsim = pd.read_csv(l_ej[10], index_col=0, parse_dates= True)
+            df_qsim = qsim[list(map(str,df_otrostramos.tramo.values))]
+            df_qsim.columns = df_otrostramos.index
+
+            #plot
+            ax = df_qsim[id_est[0]].plot(c=color,lw=2.25,label='$\\bf{Qsim\_}$$\\bf{%s%s}$'%(l_ej[1],l_ej[4]))
+
+    #     ax2=ax.twinx()
+    #     (df_pbasins[est]*12).plot.area(ax=ax2,alpha = 0.6,color = '#4392d6',lw = 0.1)
+    #     ax2.set_ylim(12*3*12,0)
+    #     ax2.set_ylabel(u'Precipitación (mm/h)',fontsize=18)
+    #     pl.locator_params(axis='y', nbins=4)
+        legend = ax.legend(loc=(0.05,-0.4), fontsize=13.15,ncol=3)
+        ax.set_title('Desembocadura %s'%(df_otrostramos.loc[id_est[0]].nombrecauce), fontsize=17.5, y=1.01)#, color='k')
+
+        ax.grid(False)
+    #     ax2.grid(False)
+
+        if rutafig is not None:
+            fig.savefig(rutafig+'qsim_%s.png'%(df_otrostramos.loc[id_est[0]].id),dpi=100,
+                    bbox_extra_artists=(legend,),bbox_inches='tight')
+        pl.close()
+    print('Graphics are generated: Qotros')
+
+def plot_N(ests,ylims_n,ListEjecs,colors,df_est_metadatos,df_bd,df_nobs,df_pbasins,rutafig=None):
+    #grafica nivel
+    for ylim_n,est in zip(ylims_n[:],ests[:]):
+        #grafica
+        fig=pl.figure(figsize=(7,4),dpi=90,facecolor='w')
+        ax=fig.add_subplot(111)
+        df_nobs[est].plot(ax=ax,c='k',lw=3,label='$\\bf{Nobs}$')
+        ax.set_ylabel(u'Nivel (m)',fontsize=18)
+        pl.locator_params(axis='y', nbins=4)
+        #qsim pars
+        for color,l_ej in zip(colors,ListEjecs):
+            #qsim
+            df_qsim = pd.read_csv(l_ej[10], index_col=0, parse_dates= True)
+            df_qsim = df_qsim[list(map(str,df_est_metadatos.tramo.values))]
+            df_qsim.columns = ests
+
+            #nsim
+            df_nsim = pd.DataFrame(index=df_qsim.index)
+            df_nsim[est]= Q2N(df_qsim[est],df_est_metadatos.loc[est].a,df_est_metadatos.loc[est].b)
+            #eficiencia
+            df2kge= pd.DataFrame([df_nobs[est].values,df_nsim[est].values],index=['obs','sim']).T
+            if df2kge.dropna().shape[0] != 0:    
+                nse = wmf.__eval_nash__(df2kge.obs.values,df2kge.sim.values)
+                kge = hydroeval.kge(df2kge.dropna().sim.values,df2kge.dropna().obs.values)[0][0]
+                #R2
+                regresion_lineal = LinearRegression()
+                regresion_lineal.fit(df2kge.dropna().sim.values.reshape(-1,1), df2kge.dropna().obs.values) 
+                # regresion_lineal.coef_,regresion_lineal.intercept_
+                r2 = regresion_lineal.score(df2kge.dropna().sim.values.reshape(-1,1), df2kge.dropna().obs.values)
+            else: nse = np.nan; kge = np.nan; r2 = np.nan
+            #plot
+            ax = df_nsim[est].plot(c=color,lw=2.25,label='$\\bf{Nsim\_}$$\\bf{%s%s}$ \nNSE: %s \nKGE:  %s \nR²:   %s'%(l_ej[1],l_ej[4],
+                                                                                                   round(nse,2),round(kge,2),
+                                                                                                   round(r2,2)))#0.2,0.5))
+
+        ax2=ax.twinx()
+        (df_pbasins[est]*12).plot.area(ax=ax2,alpha = 0.6,color = '#4392d6',lw = 0.1)
+        ax2.set_ylim(12*3*12,0)
+        ax2.set_ylabel(u'Precipitación (mm/h)',fontsize=18)
+        ax2.grid(False)
+
+        legend = ax.legend(loc=(-0.06,-0.6), fontsize=13.15,ncol=3)
+        ax.set_title('Est %s | %s'%(est,df_bd.loc[est].nombreestacion), fontsize=17.5, y=1.01, color='k')
+        pl.locator_params(axis='y', nbins=4)
+        ax.grid(False)
+
+        # nrisks
+        riskcolor=['k','green','yellow','orange','red']    
+        nrisks = np.insert((df_bd.loc[est,'offsetn'] - df_bd.loc[est,['n2','n3','n4','n5']]).values/100.,0,0.)
+        if ax.get_yticks()[-1] > nrisks[-1]: #si ylim es mayor que n5 hacer n5 ese 0.9*ylim, paque ocupe toda la grafica
+            nrisks[-1] = ax.get_yticks()[-1]*0.9
+        else:
+            ax.set_ylim(0,nrisks[-1]+0.1)
+        for index,nrisk in enumerate(nrisks[:-1]):    
+             ax.axvspan(df_nsim.index[-1]+pd.Timedelta('%ss'%int(wmf.models.dt*2)),
+                        df_nsim.index[-1]+pd.Timedelta('%ss'%int(wmf.models.dt*5)),
+                       nrisks[index]/ax.get_ylim()[1],nrisks[index+1]/ax.get_ylim()[1],color=riskcolor[index+1])
+
+        ax.set_xlim(df_nsim.index[0],df_nsim.index[-1]+pd.Timedelta('%ss'%int(wmf.models.dt*6))) #pasos de tiempo
+
+        if rutafig is not None:
+            fig.savefig(rutafig+'nsim_%s.png'%(est),dpi=100,
+                    bbox_extra_artists=(legend,),bbox_inches='tight')
+        pl.close()
+    print('Graphics are generated: Nval')
+
+def plotHS(df_bd_h,start,end,ListEjecs,colors_sim,df_est_metadatos,df_pestsH,
+          server,user,passwd,dbname,path_dfh,Dt,
+          initial_colors = np.array(['#ab5750','#8e287e','#2b0a56']),
+          rutafig=None):
+    #consulta y grafica humedad
+    dicobs_hs = {}
+    for esth in df_bd_h.index[:]:
+        soilm_df= query_humedad(esth,'1T',server,user,passwd,dbname,df_bd_h,start=start,end=end,
+                                update_or_save_csv=0,calidad=False,path_dfh = path_dfh) #update solo end-30d:end.
+        soilm_df = soilm_df.drop('calidad',axis=1)
+        soilm_df = soilm_df.apply(pd.to_numeric, errors='coerce')
+
+        #vars por tipo
+        if df_bd_h.loc[esth].tipo_sensor == 1: one_var = 'h'
+        elif df_bd_h.loc[esth].tipo_sensor == 2: one_var = 'vw'
+        elif df_bd_h.loc[esth].tipo_sensor == 3: one_var = 'sh'
+
+        #escoger nombrs de var y coloroes, de acuerdo a las prof que van.
+        varss = [key for key in soilm_df.columns if int(key[-1]) in df_bd_h.loc[esth].sensor_h  and key[:-1] == one_var]
+        colors = initial_colors[list(np.array(df_bd_h.loc[esth].sensor_h)-1)]
+
+        #def df 
+        df_hs = soilm_df[varss].resample(Dt).mean()
+        dfp = soilm_df[['p1','p2']].resample(Dt).sum()
+        df_hs[['p1','p2']] = dfp 
+        dicobs_hs.update({esth:[df_hs,varss,colors]})
+
+        #grafica
+        fig=pl.figure(figsize=(7,4),dpi=90,facecolor='w')
+    #     fig.set_figheight(5)
+    #     fig.set_figwidth(10)
+        ax=fig.add_subplot(111)
+        if dicobs_hs[esth][0].shape[0] != 0.0:
+            dicobs_hs[esth][0][dicobs_hs[esth][1][0]].plot(ax=ax,color=dicobs_hs[esth][2],lw=3.2,label='$\\bf{CVA_{obs}}$')
+        ax.set_ylabel(u'CVA   (%)',fontsize=18)
+        ax.set_ylim(10,110)
+        pl.locator_params(axis='y', nbins=4)
+        #hs_sim pars
+        for color,l_ej in zip(colors_sim,ListEjecs):
+            #hssim
+            hs_sim = pd.read_csv(l_ej[14], index_col=0, parse_dates= True)
+
+            df2kge= pd.DataFrame([dicobs_hs[esth][0][dicobs_hs[esth][1][0]].values,hs_sim['%s'%esth].values],index=['obs','sim']).T #obs: sensor mas sup.
+            if df2kge.dropna().shape[0] != 0:    
+                nse = wmf.__eval_nash__(df2kge.obs.values,df2kge.sim.values)
+                kge = hydroeval.kge(df2kge.dropna().sim.values,df2kge.dropna().obs.values)[0][0]
+                #R2
+                regresion_lineal = LinearRegression()
+                regresion_lineal.fit(df2kge.dropna().sim.values.reshape(-1,1), df2kge.dropna().obs.values) 
+                # regresion_lineal.coef_,regresion_lineal.intercept_
+                r2 = regresion_lineal.score(df2kge.dropna().sim.values.reshape(-1,1), df2kge.dropna().obs.values)
+            else: nse = np.nan; kge = np.nan; r2 = np.nan
+
+            hs_sim['%s'%esth].plot(ax=ax, color= color,lw=3,alpha=0.8,label='$\\bf{CVA_{sim}\_}$$\\bf{%s%s}$ \nNSE: %s \nKGE:  %s \nR²:   %s'%(l_ej[1],l_ej[4],
+                                                                                                   round(nse,2),round(kge,2),
+                                                                                                   round(r2,2)))#0.2,0.5))
+        ax2=ax.twinx()
+        df_pestsH[esth].plot.area(ax=ax2,alpha = 0.6,color = '#4392d6',lw = 0.1,label = 'Radar')
+        if dicobs_hs[esth][0].shape[0] != 0.0:
+            (dicobs_hs[esth][0][dicobs_hs[esth][0].columns[-2:]].mean(axis=1)).plot(ax=ax2,color = '#4392d6',label = 'Pluviómetros',lw=2.25)
+            legend1 = ax.legend(loc=(-0.095,-0.75), fontsize=13.15,ncol=3)
+            legend2 = ax2.legend(loc=(0.225,-0.385), fontsize=13.15,ncol=3)
+        else:
+            legend1 = ax.legend(loc=(0.25,-0.75), fontsize=13.15,ncol=3)
+            legend2 = ax2.legend(loc=(0.4,-0.385), fontsize=13.15,ncol=3)
+        ax.set_title('Est. %s | %s'%(esth,df_bd_h.loc[esth].nombreestacion), fontsize=17.5, y=1.01, color='k')
+        pl.locator_params(axis='y', nbins=4)
+        ax.grid(False)
+        ax2.grid(False)
+
+        if rutafig is not None:
+            pl.savefig(rutafig+'hssim_%s.png'%(esth),dpi=90,bbox_inches='tight')
+    #                 bbox_extra_artists=([legend1,legend2]))
+        pl.close()
+    print('Graphics are generated: HS')
+
+def get_intervalcmap(bounds,cbar):
+    fig, ax = pl.subplots(figsize=(6, 1))
+    fig.subplots_adjust(bottom=0.5)
+    colors = []
+    cmap=pl.get_cmap(cbar)
+    kn = np.arange(bounds.size)
+    for k in kn:
+        colors.append(cmap(float(k)/kn.max()))
+    colors = np.array(colors)
+
+    cmap = matplotlib.colors.ListedColormap(colors)
+
+    norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+    cb3 = matplotlib.colorbar.ColorbarBase(ax, cmap=cmap,norm=norm,boundaries= bounds, extend='both',
+                                    extendfrac='auto',ticks= bounds,spacing='uniform',orientation='horizontal')
+    pl.close()
+    return cmap,norm
+
+def plot_mapas_HS(L,ruta_map_hglog, ruta_map_porcsat):
+    
+    cu = L[0]
+    f=open(L[9]+'.StOhdr')
+    filelines=f.readlines()
+    f.close()
+    IDs=np.array([int(i.split(',')[0]) for i in filelines[5:]])
+    fechas=np.array([i.split(',')[-1].split(' ')[1] for i in filelines[5:]])
+
+    #lee almacenamientos
+    v,r = wmf.models.read_float_basin_ncol(L[9]+'.StObin',IDs[-1], cu.ncells, 5)    #ultimo mapa
+    v[2][v[2]> wmf.models.max_gravita[0]] = wmf.models.max_gravita[0][v[2]> wmf.models.max_gravita[0]] #sumideros?
+
+    #hg_mm log
+    bounds = np.arange(0,8,1); tickslabels = np.array([int(np.round(math.exp(i))) for i in bounds])
+    cbar = "BuPu"; cmap,norm = get_intervalcmap(bounds,cbar)
+    cu.Plot_basinClean(np.log(v[2]), cmap= pl.get_cmap('BuPu'),show_cbar=False,
+                       cbar_ticks= bounds,
+                       cbar_ticklabels= tickslabels,
+                       figsize=(15,20),ruta= ruta_map_hglog)
+    pl.close()
+    
+    #hu+hg sat
+    bounds = np.arange(0,100,10); cbar = 'Blues' ; cmap,norm = get_intervalcmap(bounds,cbar)
+    porc_sat = ((v[0]+v[2])/(wmf.models.max_capilar+wmf.models.max_gravita))*100
+    cu.Plot_basinClean(porc_sat, cmap= pl.get_cmap('Blues'),show_cbar=False,
+                       cbar_ticks= bounds,
+                       cbar_ticklabels= tickslabels,
+                       figsize=(15,20),ruta= ruta_map_porcsat)
+    pl.close()
+    print('Graphics are generated: maps HS.')
