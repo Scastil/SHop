@@ -1,8 +1,16 @@
 #ignore all the resultant data files
-/project_files/results/graficas/*
-!project_files/results/graficas/readme.txt
+/project_files/results/graficas/caudal/*
+!project_files/results/graficas/caudal/readme.txt
+/project_files/results/graficas/nivel/*
+!project_files/results/graficas/nivel/readme.txt
+/project_files/results/graficas/humedaddelsuelo/estaciones/*
+!project_files/results/graficas/humedaddelsuelo/estaciones/readme.txt
+/project_files/results/graficas/humedaddelsuelo/mapas/*
+!project_files/results/graficas/humedaddelsuelo/mapas/readme.txt
 /project_files/results/results_h/*
 !project_files/results/results_h/readme.txt
+/project_files/results/results_op/estH_obs/*
+!project_files/results/results_op/estH_obs/readme.txt
 /project_files/results/results_op/rain_op/*
 !project_files/results/results_op/rain_op/readme.txt
 /project_files/results/results_op/*
