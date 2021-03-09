@@ -1,0 +1,1 @@
+Aquí se aloja un .csv por cada estación de humedad, con los datos de los últimos días de obs. (máx. 30d) usados en las  gráficas de comparación sim. y obs.
