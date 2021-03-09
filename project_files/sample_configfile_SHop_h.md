@@ -12,6 +12,7 @@ Cada una se compone de 11 parámetros escalares, los cuales son:
 - R[8] : Vel Cauces.
 - R[9] : Alm capilar maximo.
 - R[10] : Alm gravitacional maximo.
+- R[11] : Alm maximo del acuifero.
 
 Los valores de calibración varían de acuerdo a la escala temporal y 
 espacial de ejecución del modelo.  Cada uno de estos parámetros es 
@@ -51,9 +52,9 @@ los espacios, deben tener la sgte. estructura: - **nombreruta**: ruta.
 
 - **name_proj**: SHop_E260_90m_1h
     > Nombre del proyecto.
-- **ruta_proj**: /home/hidrologia/jupyter/SH_op/SHop_E260_90m_1h/SHop/project_files/
+- **ruta_proj**: /home/socastillogi/jupyter/SH_op/SHop_E260_90m_1h/SHop/project_files/
     > Ruta donde se almacena el proyecto, donde se guardan todos los archivos.
-- **ruta_md_d**: /home/hidrologia/jupyter/SH_op/SHop_E260_90m_1d/SHop/project_files/inputs/configfile_SHop_E260_90m_1d.md
+- **ruta_md_d**: /home/socastillogi/jupyter/SH_op/SHop_E260_90m_1d/SHop/project_files/inputs/configfile_SHop_E260_90m_1d.md
     > Ruta del configfile de ejecucion diaria.
 
     
@@ -63,14 +64,10 @@ Estas cosas solo se leen.
 
 - **ruta_nc**: inputs/E260_90m_py3_v111.nc
     > Ruta del .nc de la cuenca para la simulación.
-- **ruta_nc_tramos**: inputs/E260_90m_py2_tramos.csv
-    > Ruta del .csv con la asignacion de tramos que corresponden a estaciones de nivel.
+- **ruta_nc_metadatos**: inputs/metadatosdeests_2validar.csv
+    > Ruta del .csv con metadatos del .nc: asignacion de tramos que corresponden a estaciones de nivel y curvas de estimación de caudales.
 - **ruta_csv_subbasinmask**: inputs/df_E260_90m_py2_subbasins_posmasks.csv
     > Ruta del .csv con la asignacion de posiciones del nc que corresponden a la subcuenca de cada estacion de nivel.
-<!-- - **ruta_curvascalob**: /media/nicolas/maso/Soraya/data/metadata/df_bdcurvascal.csv
-- **ruta_curvascalob2**: /media/nicolas/maso/Soraya/data/metadata/curvas_cal_alexa.csv -->
-- **ruta_curvascalob3**: inputs/df_curvascal_frankenstein_20200915.csv
-    > Ruta en donde se encuentran el dataframe con coeficientes de curvas de calibracion observada
 - **ruta_modelset**: inputs/model_settings_h.json
     > Ruta de model_settings para configurar ejecución del modelo.
 - **ruta_CI_reglaspant**: inputs/CI/reglas_pant/
@@ -87,24 +84,42 @@ Estas cosas solo se leen.
     > Ruta en donde se generan los binarios de precipitación para ejecutar simulación.
     
 - **ruta_sto_op**: results/results_op/Sto_op
-    > Ruta en donde se encuentran las copias de almacenamiento que pueden remplazar a las operacionales
+    > Ruta en donde se encuentran los binarios con mapas de almacenamiento de cada tanque hidrológico.
 - **ruta_qsim_op**: results/results_op/Qsim_op
-    > Ruta del .csv con resultados de caudal simulado.
-<!-- > **ruta_nsim_op**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_op/Nsim_op
-    > Ruta del .csv con resultados de nivel simulado.
-> **ruta_nobs_op**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_op/Nobs.csv
-    > Ruta del .csv con nivel observado. Se guarda para graficar.
-> **ruta_qobs_op**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_op/Qobs.csv -->
-<!--     > Ruta del .csv con caudal observado. Se guarda para graficar. -->
+    > Ruta del .csv con resultados de caudal simulado para todos los nodos.
+- **ruta_HSsim_ests_op**: results/results_op/HSsim_ests_op
+    > Ruta del .csv con resultados del humedad del suelo simulada en los puntos donde hay estaciones (% saturación)
     
+- **ruta_nobs_op**: results/results_op/df_nobs.csv
+    > Ruta del .csv con consulta de ultimo mes de nobs para graficar.
+- **ruta_qobs_op**: results/results_op/df_qobs.csv
+    > Ruta del .csv con consulta de ultimo mes de qobs para graficar.
+- **ruta_HSobs_op**: results/results_op/estH_obs/
+    > Ruta de la carpeta donde se guarda los .csv con la consulta de ultimo mes de HSobs para graficar.
+   
 - **ruta_MS_hist**: results/results_h/MSto_hist
     > Ruta del .csv con resultados del almacenamiento simulado - histórico.
 - **ruta_qsim_hist**: results/results_h/Qsim_hist
     > Ruta del .csv con resultados de caudal simulado - histórico.
-<!-- > **ruta_nsim_hist**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1d/results_H/Nsim_hist
-    > Ruta del .csv con resultados de nivel simulado - histórico.    
+- **ruta_HSsim_ests_hist**: results/results_h/HSsim_ests_hist
+    > Ruta del .csv con resultados del humedad del suelo simulada en los puntos donde hay estaciones (% saturación) -histórico
+
+
+## Rutas resultados a desplegar
+
+- **ruta_qsim_png**: results/graficas/caudal/
+    > Ruta donde se almacenan las imágenes con cuadal sim.
+- **ruta_nsim_png**: results/graficas/nivel/
+    > Ruta donde se almacenan las imágenes con nivel sim.
+- **ruta_hs_sim_png**: results/graficas/humedaddelsuelo/estaciones/
+    > Ruta donde se almacenan las imágenes con humedad del suelo sim.
+- **ruta_hglog_sim_png**: results/graficas/humedaddelsuelo/mapas/
+    > Ruta donde se almacenan gráficas del mapa con humedad del suelo sim.: Hg en escala log.
+- **ruta_psat_sim_png**: results/graficas/humedaddelsuelo/mapas/
+    > Ruta donde se almacenan gráficas del mapa con humedad del suelo sim.: Hg+Hg en (porcentaje de saturación).
     
     
+<!-- > **ruta_nsim_op**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_op/Nsim_op
 > **ruta_qsim_ns_hist**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_H/performance/Qsim_NS_hist
     > Ruta del .csv con resultados del desempeno del modelo - histórico. Criterio: Nash-Sutcliffe.
 > **ruta_qsim_kge_hist**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_H/performance/Qsim_KGE_hist
@@ -112,15 +127,9 @@ Estas cosas solo se leen.
 > **ruta_nsim_ns_cco_hist**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_H/performance/Nsim_NS_cco_hist
     > Ruta del .csv con resultados del desempeno del modelo - N - histórico. Criterio: Nash-Sutcliffe.
 > **ruta_nsim_kge_cco_hist**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_H/performance/Nsim_KGE_cco_hist
-    > Ruta del .csv con resultados del desempeno del modelo - histórico. Criterio: Kling-Gupta.
-        
+    > Ruta del .csv con resultados del desempeno del modelo - histórico. Criterio: Kling-Gupta.  
 > **ruta_performance_op**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_op/performance/
     > Ruta en donde se guarda resumen de desempeno operacional
 > **ruta_performance_hist**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_H/performance/
     > Ruta del .csv con resultados del desempeno del modeloo - histórico. Se usa para escribir resumenes de par escogidas por cada criterio para cada estacion para cada paso de tiempo. -->
 
-
-## Rutas resultados a desplegar
-
-- **ruta_qsim_png**: results/graficas/
-    > Ruta donde se almacenan las imágenes con resultados de simulación.
