@@ -149,7 +149,7 @@ df_est_metadatos = pd.read_csv(SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ru
 df_est_metadatos = df_est_metadatos.loc[estsn] #331, 91,342
 
 #otros tramos que neider pidio
-df_otrostramos = pd.read_csv('/home/socastillogi/jupyter/SH_op/SHop_E260_90m_1h/SHop/project_files/inputs/otros_tramos_importantes.csv',header=None)
+df_otrostramos = pd.read_csv(SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_nc_metadatos_otrostramos'),header=None)
 df_otrostramos.columns = ['nombrecauce','tramo']
 
 #METADATOS BD NIVEL

@@ -66,6 +66,8 @@ Estas cosas solo se leen.
     > Ruta del .nc de la cuenca para la simulación.
 - **ruta_nc_metadatos**: inputs/metadatosdeests_2validar.csv
     > Ruta del .csv con metadatos del .nc: asignacion de tramos que corresponden a estaciones de nivel y curvas de estimación de caudales.
+- **ruta_nc_metadatos_otrostramos**: inputs/otros_tramos_importantes.csv
+> Ruta del .csv con metadatos del .nc: asignacion de tramos sin estaciones de nivel que igual son de interés.
 - **ruta_csv_subbasinmask**: inputs/df_E260_90m_py2_subbasins_posmasks.csv
     > Ruta del .csv con la asignacion de posiciones del nc que corresponden a la subcuenca de cada estacion de nivel.
 - **ruta_modelset**: inputs/model_settings_h.json
