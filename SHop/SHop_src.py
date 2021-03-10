@@ -105,6 +105,7 @@ def round_time(date = dt.datetime.now(),round_mins=5):
     
 def get_credentials(ruta_credenciales):
     credentials = json.load(open(ruta_credenciales))
+    #creds para consultas
     mysqlServer = credentials['MySql_Siata']
     for key in np.sort(list(credentials['MySql_Siata'].keys()))[::-1]: #1:hal, 2:sal
         try:
@@ -121,7 +122,9 @@ def get_credentials(ruta_credenciales):
         except:
             print('SERVER_CON: No connection to %s'%(key))
             pass
-    return host,user,password,db
+    #creds para copiar a var
+    user2copy2var = credentials['cred_2copy2var']['user']; host2copy2var = credentials['cred_2copy2var']['host']
+    return host,user,password,db,user2copy2var,host2copy2var
     
 def coord2hillID(ruta_nc, df_coordxy):
     #lee simubasin pa asociar tramos, saca topologia basica
@@ -1897,8 +1900,8 @@ def plot_Q(ests,ylims_q,ListEjecs,colors_d,df_est_metadatos,df_bd,df_qobs,df_pba
                                                                                                    round(r2,2)))
 
         ax2=ax.twinx()
-        (df_pbasins[est]*12).plot.area(ax=ax2,alpha = 0.6,color = '#4392d6',lw = 0.1)
-        ax2.set_ylim(12*3*12,0)
+        (df_pbasins[est]).plot.area(ax=ax2,alpha = 0.6,color = '#4392d6',lw = 0.1)
+        ax2.set_ylim(12*3,0)
         ax2.set_ylabel(u'Precipitación (mm/h)',fontsize=18)
         legend = ax.legend(loc=(-0.06,-0.6), fontsize=13.15,ncol=3)
         ax.set_title('Est %s | %s'%(est,df_bd.loc[est].nombreestacion), fontsize=17.5, y=1.01)#, color='k')
@@ -1932,8 +1935,8 @@ def plot_Qotros(df_otrostramos,ListEjecs,colors,rutafig=None):
             ax = df_qsim[id_est[0]].plot(c=color,lw=2.25,label='$\\bf{Qsim\_}$$\\bf{%s%s}$'%(l_ej[1],l_ej[4]))
 
     #     ax2=ax.twinx()
-    #     (df_pbasins[est]*12).plot.area(ax=ax2,alpha = 0.6,color = '#4392d6',lw = 0.1)
-    #     ax2.set_ylim(12*3*12,0)
+    #     (df_pbasins[est]).plot.area(ax=ax2,alpha = 0.6,color = '#4392d6',lw = 0.1)
+    #     ax2.set_ylim(12*3,0)
     #     ax2.set_ylabel(u'Precipitación (mm/h)',fontsize=18)
     #     pl.locator_params(axis='y', nbins=4)
         legend = ax.legend(loc=(0.05,-0.4), fontsize=13.15,ncol=3)
@@ -1984,8 +1987,8 @@ def plot_N(ests,ylims_n,ListEjecs,colors,df_est_metadatos,df_bd,df_nobs,df_pbasi
                                                                                                    round(r2,2)))#0.2,0.5))
 
         ax2=ax.twinx()
-        (df_pbasins[est]*12).plot.area(ax=ax2,alpha = 0.6,color = '#4392d6',lw = 0.1)
-        ax2.set_ylim(12*3*12,0)
+        (df_pbasins[est]).plot.area(ax=ax2,alpha = 0.6,color = '#4392d6',lw = 0.1)
+        ax2.set_ylim(12*3,0)
         ax2.set_ylabel(u'Precipitación (mm/h)',fontsize=18)
         ax2.grid(False)
 
@@ -2039,7 +2042,7 @@ def plotHS(df_bd_h,start,end,ListEjecs,colors_sim,df_est_metadatos,df_pestsH,
         df_hs = soilm_df[varss].resample(Dt).mean()
         dfp = soilm_df[['p1','p2']].resample(Dt).sum()
         df_hs[['p1','p2']] = dfp 
-        dicobs_hs.update({esth:[df_hs,varss,colors]})
+        dicobs_hs.update({esth:[df_hs.loc[start:end],varss,colors]})
 
         #grafica
         fig=pl.figure(figsize=(7,4),dpi=90,facecolor='w')
@@ -2079,6 +2082,8 @@ def plotHS(df_bd_h,start,end,ListEjecs,colors_sim,df_est_metadatos,df_pestsH,
         else:
             legend1 = ax.legend(loc=(0.25,-0.75), fontsize=13.15,ncol=3)
             legend2 = ax2.legend(loc=(0.4,-0.385), fontsize=13.15,ncol=3)
+        ax2.set_ylim(25*3,0)
+        ax2.set_ylabel(u'Precipitación (mm/h)',fontsize=18)
         ax.set_title('Est. %s | %s'%(esth,df_bd_h.loc[esth].nombreestacion), fontsize=17.5, y=1.01, color='k')
         pl.locator_params(axis='y', nbins=4)
         ax.grid(False)

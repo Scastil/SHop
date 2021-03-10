@@ -1,15 +1,21 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 # PAQUETES PARA CORRER OP.
-import pandas as pd
 import numpy as np
+import pandas as pd
 import datetime as dt
 import json
 import wmf.wmf as wmf
 import hydroeval
 import glob
-import MySQLdb
-#modulo pa correr modelo
 import SHop
 import hidrologia
+import os
+
+import seaborn as sns
+sns.set(style="whitegrid")
+sns.set_context('notebook', font_scale=1.13)
 
 #FORMATO
 # fuente
@@ -18,32 +24,36 @@ matplotlib.use('Agg')
 import matplotlib.font_manager as fm
 import matplotlib.dates as mdates
 import matplotlib.font_manager as font_manager
-font_dirs = ['/home/hidrologia/jupyter/SH_op/fuentes/AvenirLTStd-Book']
+font_dirs = ['/home/socastillogi/jupyter/fuentes/AvenirLTStd-Book']
 font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
 font_list = font_manager.createFontList(font_files)
 font_manager.fontManager.ttflist.extend(font_list)
 matplotlib.rcParams['font.family'] = 'Avenir LT Std'
-matplotlib.rcParams['font.size']=12
+matplotlib.rcParams['font.size']=11
 import pylab as pl 
 #axes
-pl.rc('axes',labelcolor='#4f4f4f')
-pl.rc('axes',linewidth=1.5)
-pl.rc('axes',edgecolor='#bdb9b6')
+# pl.rc('axes',labelcolor='#4f4f4f')
+# pl.rc('axes',linewidth=1.5)
+# pl.rc('axes',edgecolor='#bdb9b6')
 pl.rc('text',color= '#4f4f4f')
-# pl.rc('xtick',color='#4f4f4f')
-# pl.rc('ytick',color='#4f4f4f')
-# pl.locator_params(axis='y', nbins=5)
-# ax.spines['right'].set_visible(False)
-# ax.spines['top'].set_visible(False)
 
-print (dt.datetime.now())
+#avoid warnings
+import warnings
+warnings.filterwarnings('ignore')
 
-print (dt.datetime.now())
+
+############################################################################################  FECHA
+date_ev = pd.to_datetime('2021-03-09 18:00')
+
 ############################################################################################  ARGUMENTOS
-ruta_proj = '/home/hidrologia/jupyter/SH_op/SHop_E260_90m_1d/SHop/project_files/'
+print (dt.datetime.now())
+
+ruta_proj = '/home/socastillogi/jupyter/SH_op/SHop_E260_90m_1d/SHop/project_files/'
 configfile=ruta_proj+'inputs/configfile_SHop_E260_90m_1d.md'
-save_hist = True #####################################################False for first times
-date = '2020-10-28 22:13'#dt.datetime.now().strftime('%Y-%m-%d %H:%M')
+save_hist = False #####################################################False for first times
+dateformat_starts = '%Y-%m-%d'
+date = pd.to_datetime(date_ev.strftime(dateformat_starts))
+ConfigList= SHop.get_rutesList(configfile)
 
 ############################################################################################ EJECUCION
 
@@ -66,17 +76,18 @@ print ('######')
 print ('Start DAILY execution: %s'%dt.datetime.now()) 
 
 #dates
-date = (pd.to_datetime(pd.to_datetime(date).strftime('%Y-%m-%d')) - pd.Timedelta('1 day')) #llega al dia antes del evento.
+date = (pd.to_datetime(pd.to_datetime(date).strftime('%Y-%m-%d')) - pd.Timedelta('8 day')) #llega a donde empieza el horario
 
 starts_w = [date - pd.Timedelta(start) for start in starts]
 starts_m_d = [start_w - pd.Timedelta(warming_window) for start_w in starts_w]
 end_d = date + pd.Timedelta(window_end)
 
-
 # df execution
 df_executionprops_d = pd.DataFrame([starts,
                                   starts_names,
-                                  ['%s-p01-ci1-90d.StOhdr'%(SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_sto_op'))], #first run: 0.0,
+                                  ['/home/socastillogi/jupyter/SH_op/src/calibracion_validacion/calval_enbloque/outputs/bin_sto/SMsim_d_202008-2021.StOhdr'],
+                                    #iniciar desde las CI del bin de mediano plazo
+#                                   '%s-p01-ci1-90d.StOhdr'%(SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_sto_op'))], #first run: 0.0,
                                   ['ci1'],
                                   [[1.0 , 5.9 , 5.7 , 0.0 , 1.0 , 1.0 , 10.8 , 1.0 , 1.0 , 1.0, 1.0 ]],
                                   ['-p01'],
@@ -93,9 +104,21 @@ pseries,ruta_out_rain_d = SHop.get_rainfall2sim(ConfigList,cu,path_ncbasin,[star
 
 print (ruta_out_rain_d)
 
+#lectura de creds
+server,user,passwd,dbname,user2var,host2var = SHop.get_credentials(SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_credenciales'))
+
+#consulta x,y estaciones de humedad.
+df_xy_est = hidrologia.bd.sql_query('select codigo,longitude,latitude from estaciones where red in ("humedad","humedad_stevens","humedad_laderas_5te_rasp","humedad_stevens_laderas_rasp") and estado in ("A","P")',
+                                 server,user,passwd,dbname)
+#coordenadas to numeric
+df_xy_est = df_xy_est.apply(pd.to_numeric, errors='ignore')
+df_xy_estH = df_xy_est.set_index('codigo')
+
 # set of executions
 ListEjecs_d = SHop.get_executionlists_fromdf(ConfigList,ruta_out_rain_d,cu,starts_m_d,end_d,df_executionprops_d,
-                                             warming_steps=warming_steps, dateformat_starts = dateformat_starts)
+                                             df_xy_estH,
+                                             warming_steps=warming_steps, dateformat_starts = dateformat_starts,
+                                             fecha_binsto = starts_m_d[0])
 
 #execution
 print ('Start simulations: %s'%dt.datetime.now())
