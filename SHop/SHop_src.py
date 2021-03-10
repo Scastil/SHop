@@ -36,13 +36,13 @@ sns.set_context('notebook', font_scale=1.13)
 # fuente
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.font_manager as fm
-import matplotlib.dates as mdates
-import matplotlib.font_manager as font_manager
-font_dirs = ['/home/socastillogi/jupyter/fuentes/AvenirLTStd-Book']
-font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
-font_list = font_manager.createFontList(font_files)
-font_manager.fontManager.ttflist.extend(font_list)
+# import matplotlib.font_manager as fm
+# import matplotlib.dates as mdates
+# import matplotlib.font_manager as font_manager
+# font_dirs = ['/home/socastillogi/jupyter/fuentes/AvenirLTStd-Book']
+# font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
+# font_list = font_manager.createFontList(font_files)
+# font_manager.fontManager.ttflist.extend(font_list)
 matplotlib.rcParams['font.family'] = 'Avenir LT Std'
 matplotlib.rcParams['font.size']=11
 import pylab as pl 

@@ -256,14 +256,12 @@ ruta_map_porcsat = '%s%s%s'%(SHop.get_ruta(ConfigList,'ruta_proj'),SHop.get_ruta
 SHop.plot_mapas_HS(chosen_L,ruta_map_hglog, ruta_map_porcsat)
 
 
-ruta_graficas = SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_graficas_resultados')
-ruta_var = '%s@192.168.1.74:/var/www/hidrologia/SH_op/graficas_op/'
-
-
 ########################################## COPIAR AL VAR/WWW
 # res = os.system('rsync -r -v -a -z -e ssh %s* %s'%(ruta_graficas, ruta_var))
 ruta_var = '%s@%s:/var/www/hidrologia/SH_op/graficas_op/'%(user2var,host2var)
+ruta_graficas = SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_graficas_resultados')
 
+res = os.system('scp -r %s* %s'%(ruta_graficas, ruta_var))
 if res == 0:
     print ('Se copian archivos en %s'%(ruta_var))
 else:
