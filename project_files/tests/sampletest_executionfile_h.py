@@ -42,7 +42,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 ############################################################################################  FECHA
-date_ev = pd.to_datetime('2021-03-09 18:00') #dt.datetime.now().strftime('%Y-%m-%d %H:%M')
+date_ev = pd.to_datetime(dt.datetime.now().strftime('%Y-%m-%d %H')) #pd.to_datetime('2021-03-09 18:00') #
 
 ############################################################################################  ARGUMENTOS
 print (dt.datetime.now())
@@ -170,10 +170,10 @@ df_pbasins = SHop.get_pradar_withinnc(path_r,cu,start,end,Dt,ests,path_masks_csv
 
 #METADATOS BD HUMEDAD
 estsh = [107,118,188,237,235,1004,296,396,422,424,436,455] #set order for metadata. 
-query = 'select codigo, nombreestacion,estado,hd,red from estaciones where red in ("humedad","humedad_stevens","humedad_laderas_5te_rasp","humedad_stevens_laderas_rasp") and estado in ("A","P")'
+query = 'select codigo, nombreestacion,ciudad,estado,hd,red from estaciones where red in ("humedad","humedad_stevens","humedad_laderas_5te_rasp","humedad_stevens_laderas_rasp") and estado in ("A","P")'
 df_bd_h = hidrologia.bd.sql_query(query,server,user,passwd,dbname).set_index('codigo')
 df_bd_h.index = list(map(int,df_bd_h.index)) ; df_bd_h = df_bd_h.loc[estsh]
-df_bd_h.columns = ['nombreestacion', 'estado', 'tipo_sensor', 'red']
+df_bd_h.columns = ['nombreestacion', 'ciudad', 'estado', 'tipo_sensor', 'red']
 df_bd_h.tipo_sensor = list(map(int,df_bd_h.tipo_sensor.values))
 estsh = list(df_bd_h.index)
 
@@ -182,7 +182,7 @@ codigos_pluvio = np.array([20,288,189,25,43,57,295,43,295,389,373,418])
 #si en la consulta hay mas filas que pluvio, se descartan las filas que excden el size. puede que haya una estacion nueva y no nos hayan contado.
 #No se grafica hasta que se tengan todos los metadatos, 
 if df_bd_h.shape[0]>codigos_pluvio.size:
-    print('Warnign: Possibly there are more stations than pluviometers assigned. %s vs. %s'%(df_bd_h.shape[0],codigos_pluvio.size))
+    print('Warning: Possibly there are more stations than pluviometers assigned. %s vs. %s'%(df_bd_h.shape[0],codigos_pluvio.size))
     df_bd_h = df_bd_h.loc[df_bd_h.index[:codigos_pluvio.size]]
 
 else:
@@ -256,7 +256,11 @@ ruta_map_porcsat = '%s%s%s'%(SHop.get_ruta(ConfigList,'ruta_proj'),SHop.get_ruta
 SHop.plot_mapas_HS(chosen_L,ruta_map_hglog, ruta_map_porcsat)
 
 
-########################################## COPIAR AL VAR/WWW
+########################################## COPIAR FIGS AL VAR/WWW
+#ls -al ~/.ssh/id_*.pub #chekear key
+# ssh-keygen -t rsa #crear key #responder preguntas con enter y ya.
+# ssh-copy-id remote_username@remote_IP_Address
+
 # res = os.system('rsync -r -v -a -z -e ssh %s* %s'%(ruta_graficas, ruta_var))
 ruta_var = '%s@%s:/var/www/hidrologia/SH_op/graficas_op/'%(user2var,host2var)
 ruta_graficas = SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_graficas_resultados')
@@ -267,4 +271,44 @@ if res == 0:
 else:
     print ('No se copian archivos en %s'%(ruta_var))
     
+    
+############################################################# KML
+g1 = '''<Placemark>
+<styleUrl>#testIcon197</styleUrl>
+<name>{0}</name>
+<ExtendedData><SchemaData schemaUrl="#Humedad_new">
+    <SimpleData name="Codigo">{1}</SimpleData>
+    <SimpleData name="Municipio">{2}</SimpleData>
+    <SimpleData name="Latitud">{3}</SimpleData>
+    <SimpleData name="Longitud">{4}</SimpleData>
+    <SimpleData name="icon">http://www.siata.gov.co/iconos/humedad/humedad_naranja.png</SimpleData>
+    <SimpleData name="info">Los sensores de humedad del suelo miden el contenido volumétrico de agua en el suelo (CVA), es decir, la proporción [%] entre el volumen de agua y el volumen total de una esfera de suelo (alcance del sensor). Sus datos los llamamos observaciones (obs.), son información puntual, particular del lugar de instalación. Las observaciones cambian con variables como: la precipitación en el punto (que medimos con pluviómetros) y la profundidad de instalación de cada sensor. De hecho, en algunas estaciones hay varios sensores instalados a diferente profundidad.\n Por otro lado, el modelo hidrológico simula el CVA promedio de todo un perfil de suelo, independiente de la profundidad. Estos datos los llamamos simulaciones (sim.) y para obtenerlos se realizáron ejecuciones del modelo a partir de la precipitación derivada del radar meteorológico. \nDadas las variaciones entre la información observada y simulada, es preciso aclarar que esta figura siempre compara la humedad simulada (CVA_sim) respecto a las observaciones (CVA_obs) del sensor de humedad más superficial de cada estación. Además, siempre muestra la precipitación medida por pluviómetros y por radar para permitir una mejor comparación de los datos.</SimpleData>
+    <SimpleData name="fecha_ultima_actualizacion">{5}</SimpleData>
+    <SimpleData name="G_3_H_CVA">{6}</SimpleData>
+</SchemaData></ExtendedData>
+    <Point><coordinates>{5},{4}</coordinates></Point>
+</Placemark>
+'''
+
+blocks = []
+path_figs = 'http://siata.gov.co/hidrologia/SH_op/graficas_op/humedaddelsuelo/estaciones/'
+path_kml_format = SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_kmlhumedad_formato')
+path_kml = SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_kmlhumedad_geoportal')
+url_icono = SHop.get_ruta(ConfigList,'ruta_kmlhumedad_icono')
+df_bd_h[['longitude','latitude']] = df_xy_estH
+df_metadata = df_bd_h.copy()
+print (df_metadata.estado)
+
+###################################################ejecucion
+kml = SHop.write_kml_humedad(df_metadata.index,df_bd_h,path_figs,path_kml_format,path_kml,g1)
+
+# res = os.system('rsync -r -v -a -z -e ssh %s* %s'%(ruta_graficas, ruta_var))
+ruta_var_kml = '%s@%s:/var/www/kml/01_Redes/'%(user2var,host2var)
+
+res = os.system('scp -r %s %s'%(path_kml, ruta_var_kml))
+if res == 0:
+    print ('Se copia kml en %s'%(ruta_var_kml))
+else:
+    print ('No se copia kml en %s'%(ruta_var_kml))
+      
 print (dt.datetime.now())

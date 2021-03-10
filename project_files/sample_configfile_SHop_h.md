@@ -58,7 +58,7 @@ los espacios, deben tener la sgte. estructura: - **nombreruta**: ruta.
     > Ruta del configfile de ejecucion diaria.
 
     
-## Rutas de ejecucion
+## Rutas de ejecucion e inputs.
 
 Estas cosas solo se leen.
 
@@ -78,7 +78,10 @@ Estas cosas solo se leen.
     > Ruta de carpeta con barridos de reflectividad de radar
 - **ruta_credenciales**: inputs/credenciales.csv
     > Ruta de credenciales de acceso a bd.
-   
+- **ruta_kmlhumedad_formato**: inputs/files2kml_HS/HS_kmlformat.kml
+    > Ruta donde con el formato base del KML de ests. de humedad del suelo.
+- **ruta_kmlhumedad_icono**: http://siata.gov.co/iconos/humedad/humedad_naranja.png
+    > Ruta donde con el icono de estaciones de humedad para el KML.
 
 ## Rutas resultados de ejecución.
 
@@ -107,7 +110,7 @@ Estas cosas solo se leen.
     > Ruta del .csv con resultados del humedad del suelo simulada en los puntos donde hay estaciones (% saturación) -histórico
 
 
-## Rutas resultados a desplegar
+## Rutas de resultados a desplegar
 
 - **ruta_graficas_resultados**: results/graficas/
     > Ruta donde se almacenan todas las graficas de resultados.
@@ -121,6 +124,8 @@ Estas cosas solo se leen.
     > Ruta donde se almacenan gráficas del mapa con humedad del suelo sim.: Hg en escala log.
 - **ruta_psat_sim_png**: results/graficas/humedaddelsuelo/mapas/
     > Ruta donde se almacenan gráficas del mapa con humedad del suelo sim.: Hg+Hg en (porcentaje de saturación).
+- **ruta_kmlhumedad_geoportal**: results/results_op/humedaddelsuelo_SH.kml
+    > Ruta donde con el formato base del KML de ests. de humedad del suelo.
     
     
 <!-- > **ruta_nsim_op**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_op/Nsim_op

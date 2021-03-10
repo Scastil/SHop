@@ -36,6 +36,7 @@ sns.set_context('notebook', font_scale=1.13)
 # fuente
 import matplotlib
 matplotlib.use('Agg')
+import pylab as pl 
 # import matplotlib.font_manager as fm
 # import matplotlib.dates as mdates
 # import matplotlib.font_manager as font_manager
@@ -43,9 +44,9 @@ matplotlib.use('Agg')
 # font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
 # font_list = font_manager.createFontList(font_files)
 # font_manager.fontManager.ttflist.extend(font_list)
-matplotlib.rcParams['font.family'] = 'Avenir LT Std'
-matplotlib.rcParams['font.size']=11
-import pylab as pl 
+# matplotlib.rcParams['font.family'] = 'Avenir LT Std'
+# matplotlib.rcParams['font.size']=11
+
 #axes
 # pl.rc('axes',labelcolor='#4f4f4f')
 # pl.rc('axes',linewidth=1.5)
@@ -2144,3 +2145,33 @@ def plot_mapas_HS(L,ruta_map_hglog, ruta_map_porcsat):
                        figsize=(15,20),ruta= ruta_map_porcsat)
     pl.close()
     print('Graphics are generated: maps HS.')
+    
+    
+def write_kml_humedad(codes,df_metadata,path_figs,path_kml_format,path_kml,g1):
+    blocks=[]
+    for code in codes:
+        date = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        data_bla=df_metadata.loc[code][['nombreestacion','ciudad','latitude','longitude']]
+
+        urls_png=['%shssim_%s.png'%(path_figs,code)
+                 ]
+        listlol= [data_bla['nombreestacion'],code,data_bla['ciudad'],data_bla['latitude'],data_bla['longitude'],
+              date]+urls_png
+
+        blocks.append( g1.format(listlol[0],listlol[1],listlol[2],listlol[3],listlol[4],listlol[5],listlol[6]))
+
+    #armar el kml
+    codes_block = ['%s\n\n'%'%s' for i in codes]
+
+    kml = open(path_kml_format,'r').read().format(''.join(codes_block))
+
+    try:
+        kml = kml%tuple(blocks)
+    except:
+        kml = kml%tuple(list(blocks))
+
+    f = open(path_kml,'w')
+    f.write(kml)
+    f.close()
+    print ('.kml generated.')
+    return kml
