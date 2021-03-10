@@ -52,7 +52,7 @@ los espacios, deben tener la sgte. estructura: - **nombreruta**: ruta.
 
 - **name_proj**: SHop_E260_90m_1h
     > Nombre del proyecto.
-- **ruta_proj**: /home/socastillogi/jupyter/SH_op/SHop_E260_90m_1h/SHop/project_files/
+- **ruta_proj**: /home/socastillogi/jupyter/git/SHop/project_files/
     > Ruta donde se almacena el proyecto, donde se guardan todos los archivos.
 - **ruta_md_d**: /home/socastillogi/jupyter/SH_op/SHop_E260_90m_1d/SHop/project_files/inputs/configfile_SHop_E260_90m_1d.md
     > Ruta del configfile de ejecucion diaria.
@@ -107,6 +107,8 @@ Estas cosas solo se leen.
 
 ## Rutas resultados a desplegar
 
+- **ruta_graficas_resultados**: results/graficas/
+    > Ruta donde se almacenan todas las graficas de resultados.
 - **ruta_qsim_png**: results/graficas/caudal/
     > Ruta donde se almacenan las imágenes con cuadal sim.
 - **ruta_nsim_png**: results/graficas/nivel/
