@@ -7,6 +7,10 @@
 !project_files/results/graficas/humedaddelsuelo/estaciones/readme.txt
 /project_files/results/graficas/humedaddelsuelo/mapas/*
 !project_files/results/graficas/humedaddelsuelo/mapas/readme.txt
+/project_files/results/graficas/humedaddelsuelo/mapas/psat/*
+!project_files/results/graficas/humedaddelsuelo/mapas/psat/readme.txt
+/project_files/results/graficas/humedaddelsuelo/mapas/hglog/*
+!project_files/results/graficas/humedaddelsuelo/mapas/hglog/readme.txt
 /project_files/results/results_h/*
 !project_files/results/results_h/readme.txt
 /project_files/results/results_op/estH_obs/*
