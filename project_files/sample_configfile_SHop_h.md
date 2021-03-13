@@ -56,7 +56,8 @@ los espacios, deben tener la sgte. estructura: - **nombreruta**: ruta.
     > Ruta donde se almacena el proyecto, donde se guardan todos los archivos.
 - **ruta_md_d**: /home/socastillogi/jupyter/SH_op/SHop_E260_90m_1d/SHop/project_files/inputs/configfile_SHop_E260_90m_1d.md
     > Ruta del configfile de ejecucion diaria.
-
+- **ruta_fuente**: /home/socastillogi/jupyter/fuentes/AvenirLTStd-Book
+    > Ruta que aloja las props de la fuente, es dif en cada ip.
     
 ## Rutas de ejecucion e inputs.
 
@@ -80,7 +81,7 @@ Estas cosas solo se leen.
     > Ruta de credenciales de acceso a bd.
 - **ruta_kmlhumedad_formato**: inputs/files2kml_HS/HS_kmlformat.kml
     > Ruta donde con el formato base del KML de ests. de humedad del suelo.
-- **ruta_kmlhumedad_icono**: http://siata.gov.co/iconos/humedad/humedad_naranja.png
+- **ruta_kmlhumedad_icono**: http://siata.gov.co/hidrologia/SH_op/graficas_st/icono_hs_sim.png
     > Ruta donde con el icono de estaciones de humedad para el KML.
 
 ## Rutas resultados de ejecución.
@@ -120,12 +121,19 @@ Estas cosas solo se leen.
     > Ruta donde se almacenan las imágenes con nivel sim.
 - **ruta_hs_sim_png**: results/graficas/humedaddelsuelo/estaciones/
     > Ruta donde se almacenan las imágenes con humedad del suelo sim.
+- **ruta_kmlhumedad_geoportal**: results/results_op/humedaddelsuelo_SH.kml
+    > Ruta donde con el formato base del KML de ests. de humedad del suelo.
+
+- **ruta_mapas_sim_sal**: /var/www/data/modelo_hidrologico_op/humedaddelsuelo/
+    > Ruta mapas aparte pa sal. debe ir sin / al final!
 - **ruta_hglog_sim_png**: results/graficas/humedaddelsuelo/mapas/
     > Ruta donde se almacenan gráficas del mapa con humedad del suelo sim.: Hg en escala log.
 - **ruta_psat_sim_png**: results/graficas/humedaddelsuelo/mapas/
     > Ruta donde se almacenan gráficas del mapa con humedad del suelo sim.: Hg+Hg en (porcentaje de saturación).
-- **ruta_kmlhumedad_geoportal**: results/results_op/humedaddelsuelo_SH.kml
-    > Ruta donde con el formato base del KML de ests. de humedad del suelo.
+- **ruta_hglog_sim_2gif**: results/graficas/humedaddelsuelo/mapas/hglog/
+    > Ruta donde se almacenan gráficas del mapa con humedad del suelo sim.: Hg en escala log. Para animación de últimos 3d.
+- **ruta_psat_sim_2gif**: results/graficas/humedaddelsuelo/mapas/psat/
+    > Ruta donde se almacenan gráficas de humedad del suelo sim.: Hg+Hg en (porcentaje de saturación). Para animación de últimos 3d.
     
     
 <!-- > **ruta_nsim_op**: /media/nicolas/maso/Soraya/SHOp_files/SHop_SM_E260_90m_1h/results_op/Nsim_op

@@ -37,21 +37,7 @@ sns.set_context('notebook', font_scale=1.13)
 import matplotlib
 matplotlib.use('Agg')
 import pylab as pl 
-# import matplotlib.font_manager as fm
-# import matplotlib.dates as mdates
-# import matplotlib.font_manager as font_manager
-# font_dirs = ['/home/socastillogi/jupyter/fuentes/AvenirLTStd-Book']
-# font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
-# font_list = font_manager.createFontList(font_files)
-# font_manager.fontManager.ttflist.extend(font_list)
-# matplotlib.rcParams['font.family'] = 'Avenir LT Std'
-# matplotlib.rcParams['font.size']=11
 
-#axes
-# pl.rc('axes',labelcolor='#4f4f4f')
-# pl.rc('axes',linewidth=1.5)
-# pl.rc('axes',edgecolor='#bdb9b6')
-pl.rc('text',color= '#4f4f4f')
 
 #avoid warnings
 import warnings
@@ -1867,6 +1853,24 @@ def query_humedad(codeH,freq,host,user,passw,dbname,df_metadata,update_or_save_c
 #Funciones para graficas
 #------------------------
 
+def set_fontprops(ruta_fuentes):
+    #formato fuente
+    import matplotlib.font_manager as fm
+    import matplotlib.dates as mdates
+    import matplotlib.font_manager as font_manager
+    font_dirs = [ruta_fuentes]
+    font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
+    font_list = font_manager.createFontList(font_files)
+    font_manager.fontManager.ttflist.extend(font_list)
+    matplotlib.rcParams['font.family'] = 'Avenir LT Std'
+    matplotlib.rcParams['font.size']=11
+
+    #axes
+    # pl.rc('axes',labelcolor='#4f4f4f')
+    # pl.rc('axes',linewidth=1.5)
+    # pl.rc('axes',edgecolor='#bdb9b6')
+    pl.rc('text',color= '#4f4f4f')
+
 def plot_Q(ests,ylims_q,ListEjecs,colors_d,df_est_metadatos,df_bd,df_qobs,df_pbasins,rutafig=None):
     #grafica caudal sim estaciones validacion
     for ylim_q,est in zip(ylims_q[:],ests[:]):
@@ -2114,40 +2118,67 @@ def get_intervalcmap(bounds,cbar):
     pl.close()
     return cmap,norm
 
-def plot_mapas_HS(L,ruta_map_hglog, ruta_map_porcsat):
+def plot_mapas_HS(L,ruta_map_hglog, ruta_map_psat,ruta_map_hglogs,ruta_map_psats,user2var,host2var,ruta_mapas_sim_sal):
     
     cu = L[0]
     f=open(L[9]+'.StOhdr')
     filelines=f.readlines()
     f.close()
     IDs=np.array([int(i.split(',')[0]) for i in filelines[5:]])
-    fechas=np.array([i.split(',')[-1].split(' ')[1] for i in filelines[5:]])
+    fechas= pd.to_datetime(np.array([i.split(',')[-1].split(' ')[1] for i in filelines[5:]]))
 
     #lee almacenamientos
     v,r = wmf.models.read_float_basin_ncol(L[9]+'.StObin',IDs[-1], cu.ncells, 5)    #ultimo mapa
     v[2][v[2]> wmf.models.max_gravita[0]] = wmf.models.max_gravita[0][v[2]> wmf.models.max_gravita[0]] #sumideros?
 
     #hg_mm log
-    bounds = np.arange(0,8,1); tickslabels = np.array([int(np.round(math.exp(i))) for i in bounds])
-    cbar = "BuPu"; cmap,norm = get_intervalcmap(bounds,cbar)
-    cu.Plot_basinClean(np.log(v[2]), cmap= pl.get_cmap('BuPu'),show_cbar=False,
-                       cbar_ticks= bounds,
+    bounds = np.arange(0,8,1); #tickslabels = np.array([int(np.round(math.exp(i))) for i in bounds])
+    tickslabels = np.array([1,20,80,150,420]); ticks = np.log(tickslabels)
+    cbar = "YlGnBu"; cmap,norm = get_intervalcmap(bounds,cbar)
+    cu.Plot_basinClean(np.log(v[2]), cmap= pl.get_cmap(cbar),show_cbar=False,
+                       cbar_ticks= ticks,
                        cbar_ticklabels= tickslabels,
                        figsize=(15,20),ruta= ruta_map_hglog)
     pl.close()
-    
+
     #hu+hg sat
-    bounds = np.arange(0,100,10); cbar = 'Blues' ; cmap,norm = get_intervalcmap(bounds,cbar)
+    bounds = np.arange(0,100,10); cbar = 'BuPu' ; cmap,norm = get_intervalcmap(bounds,cbar)
     porc_sat = ((v[0]+v[2])/(wmf.models.max_capilar+wmf.models.max_gravita))*100
-    cu.Plot_basinClean(porc_sat, cmap= pl.get_cmap('Blues'),show_cbar=False,
+    cu.Plot_basinClean(porc_sat, cmap= pl.get_cmap(cbar),show_cbar=False,
                        cbar_ticks= bounds,
-                       cbar_ticklabels= tickslabels,
-                       figsize=(15,20),ruta= ruta_map_porcsat)
+    #                    cbar_ticklabels= tickslabels,
+                       figsize=(15,20),ruta= ruta_map_psat)
     pl.close()
     print('Graphics are generated: maps HS.')
     
+    #save hist
+    #save hist
+    res = os.system('rsync -avz %s %s'%(ruta_map_hglog, '%s%s.png'%(ruta_map_hglogs,fechas[-1].strftime('%Y%m%d%H%M'))))
+    if res == 0:
+        print ('Se copian mapas para hist en: %s'%(ruta_map_hglogs))
+    else:
+        print ('No se copian mapas para hist en: %s'%(ruta_map_hglogs))
+
+    res = os.system('rsync -avz %s %s'%(ruta_map_hglog, '%s@%s:%s%s%s.png'%(user2var,host2var,ruta_mapas_sim_sal,'mapas/hglog/',fechas[-1].strftime('%Y%m%d%H%M'))))
+    if res == 0:
+        print ('Se copian mapas para hist en: %s'%('%s@%s:%s%s%s.png'%(user2var,host2var,ruta_mapas_sim_sal,'mapas/hglog/',fechas[-1].strftime('%Y%m%d%H%M'))))
+    else:
+        print ('No se copian mapas para hist en: %s'%('%s@%s:%s%s%s.png'%(user2var,host2var,ruta_mapas_sim_sal,'mapas/hglog/',fechas[-1].strftime('%Y%m%d%H%M'))))
+
+    res = os.system('rsync -avz %s %s'%(ruta_map_psat, '%s%s.png'%(ruta_map_psats,fechas[-1].strftime('%Y%m%d%H%M'))))
+    if res == 0:
+        print ('Se copian mapas para hist en: %s'%(ruta_map_psats))
+    else:
+        print ('No se copian mapas para hist en: %s'%(ruta_map_psats))
+
+    res = os.system('rsync -avz %s %s'%(ruta_map_psat, '%s@%s:%s%s%s.png'%(user2var,host2var,ruta_mapas_sim_sal,'mapas/psat/',fechas[-1].strftime('%Y%m%d%H%M'))))
+    if res == 0:
+        print ('Se copian mapas para hist en: %s'%('%s@%s:%s%s%s.png'%(user2var,host2var,ruta_mapas_sim_sal,'mapas/psat/',fechas[-1].strftime('%Y%m%d%H%M'))))
+    else:
+        print ('No se copian mapas para hist en: %s'%('%s@%s:%s%s%s.png'%(user2var,host2var,ruta_mapas_sim_sal,'mapas/psat/',fechas[-1].strftime('%Y%m%d%H%M'))))
     
-def write_kml_humedad(codes,df_metadata,path_figs,path_kml_format,path_kml,g1):
+    
+def write_kml_humedad(codes,df_metadata,path_figs,path_kml_format,path_kml,g1,url_icono):
     blocks=[]
     for code in codes:
         date = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -2157,8 +2188,8 @@ def write_kml_humedad(codes,df_metadata,path_figs,path_kml_format,path_kml,g1):
                  ]
         listlol= [data_bla['nombreestacion'],code,data_bla['ciudad'],data_bla['latitude'],data_bla['longitude'],
               date]+urls_png
-
-        blocks.append( g1.format(listlol[0],listlol[1],listlol[2],listlol[3],listlol[4],listlol[5],listlol[6]))
+        listlol.append(url_icono)
+        blocks.append( g1.format(listlol[0],listlol[1],listlol[2],listlol[3],listlol[4],listlol[5],listlol[6],listlol[7]))
 
     #armar el kml
     codes_block = ['%s\n\n'%'%s' for i in codes]

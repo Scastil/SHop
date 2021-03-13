@@ -9,9 +9,9 @@ import json
 import wmf.wmf as wmf
 import hydroeval
 import glob
-import SHop
-import hidrologia
 import os
+import hidrologia
+import SHop
 
 import seaborn as sns
 sns.set(style="whitegrid")
@@ -22,24 +22,13 @@ sns.set_context('notebook', font_scale=1.13)
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.font_manager as fm
-import matplotlib.dates as mdates
-import matplotlib.font_manager as font_manager
-font_dirs = ['/home/socastillogi/jupyter/fuentes/AvenirLTStd-Book']
-font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
-font_list = font_manager.createFontList(font_files)
-font_manager.fontManager.ttflist.extend(font_list)
-matplotlib.rcParams['font.family'] = 'Avenir LT Std'
-matplotlib.rcParams['font.size']=11
 import pylab as pl 
-#axes
-# pl.rc('axes',labelcolor='#4f4f4f')
-# pl.rc('axes',linewidth=1.5)
-# pl.rc('axes',edgecolor='#bdb9b6')
 pl.rc('text',color= '#4f4f4f')
 
 #avoid warnings
 import warnings
 warnings.filterwarnings('ignore')
+
 
 ############################################################################################  FECHA
 date_ev = pd.to_datetime(dt.datetime.now().strftime('%Y-%m-%d %H')) #pd.to_datetime('2021-03-09 18:00') #
@@ -201,6 +190,9 @@ df_bd_h[['p_asociado','sensor_h','depths2drop','depths_laderas']] = pd.DataFrame
 estsh = list(df_xy_estH.index)
 df_pestsH = SHop.get_pradar_withinnc(path_r,cu,start,end,Dt,estsh,df_points = df_xy_estH)
 
+#SET FONTPROPS
+ruta_fuentes= SHop.get_ruta(ConfigList,'ruta_fuente')
+SHop.set_fontprops(ruta_fuentes)
 
 
 ######################################### CONSULTA NOBS. estaciones validacion
@@ -251,9 +243,13 @@ SHop.plotHS(df_bd_h,start,end,ListEjecs_h,colors_sim,df_est_metadatos,df_pestsH,
 ########################################## GRAFICAS HUMEDAD MAPAS porc_sat y hg_log
 chosen_L = ListEjecs_h[0]
 ruta_map_hglog = '%s%s%s'%(SHop.get_ruta(ConfigList,'ruta_proj'),SHop.get_ruta(ConfigList,'ruta_hglog_sim_png'),'hglog.png')
-ruta_map_porcsat = '%s%s%s'%(SHop.get_ruta(ConfigList,'ruta_proj'),SHop.get_ruta(ConfigList,'ruta_hglog_sim_png'),'porcsat.png')
+ruta_map_psat = '%s%s%s'%(SHop.get_ruta(ConfigList,'ruta_proj'),SHop.get_ruta(ConfigList,'ruta_hglog_sim_png'),'porcsat.png')
+ruta_map_psats = SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_psat_sim_2gif')
+ruta_map_hglogs = SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_hglog_sim_2gif')
+ruta_mapas_sim_sal = SHop.get_ruta(ConfigList,'ruta_mapas_sim_sal')
 
-SHop.plot_mapas_HS(chosen_L,ruta_map_hglog, ruta_map_porcsat)
+SHop.plot_mapas_HS(chosen_L,ruta_map_hglog, ruta_map_psat,ruta_map_hglogs,ruta_map_psats,
+                   user2var,host2var,ruta_mapas_sim_sal)
 
 
 ########################################## COPIAR FIGS AL VAR/WWW
@@ -261,11 +257,10 @@ SHop.plot_mapas_HS(chosen_L,ruta_map_hglog, ruta_map_porcsat)
 # ssh-keygen -t rsa #crear key #responder preguntas con enter y ya.
 # ssh-copy-id remote_username@remote_IP_Address
 
-# res = os.system('rsync -r -v -a -z -e ssh %s* %s'%(ruta_graficas, ruta_var))
 ruta_var = '%s@%s:/var/www/hidrologia/SH_op/graficas_op/'%(user2var,host2var)
 ruta_graficas = SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,'ruta_graficas_resultados')
 
-res = os.system('scp -r %s* %s'%(ruta_graficas, ruta_var))
+res = os.system('rsync -r -v -a -z -e ssh --exclude={"%s","%s"} %s* %s'%('humedaddelsuelo/mapas/psat','humedaddelsuelo/mapas/hglog',ruta_graficas, ruta_var))
 if res == 0:
     print ('Se copian archivos en %s'%(ruta_var))
 else:
@@ -281,12 +276,12 @@ g1 = '''<Placemark>
     <SimpleData name="Municipio">{2}</SimpleData>
     <SimpleData name="Latitud">{3}</SimpleData>
     <SimpleData name="Longitud">{4}</SimpleData>
-    <SimpleData name="icon">http://www.siata.gov.co/iconos/humedad/humedad_naranja.png</SimpleData>
+    <SimpleData name="icon">{7}</SimpleData>
     <SimpleData name="info">Los sensores de humedad del suelo miden el contenido volumétrico de agua en el suelo (CVA), es decir, la proporción [%] entre el volumen de agua y el volumen total de una esfera de suelo (alcance del sensor). Sus datos los llamamos observaciones (obs.), son información puntual, particular del lugar de instalación. Las observaciones cambian con variables como: la precipitación en el punto (que medimos con pluviómetros) y la profundidad de instalación de cada sensor. De hecho, en algunas estaciones hay varios sensores instalados a diferente profundidad.\n Por otro lado, el modelo hidrológico simula el CVA promedio de todo un perfil de suelo, independiente de la profundidad. Estos datos los llamamos simulaciones (sim.) y para obtenerlos se realizáron ejecuciones del modelo a partir de la precipitación derivada del radar meteorológico. \nDadas las variaciones entre la información observada y simulada, es preciso aclarar que esta figura siempre compara la humedad simulada (CVA_sim) respecto a las observaciones (CVA_obs) del sensor de humedad más superficial de cada estación. Además, siempre muestra la precipitación medida por pluviómetros y por radar para permitir una mejor comparación de los datos.</SimpleData>
     <SimpleData name="fecha_ultima_actualizacion">{5}</SimpleData>
     <SimpleData name="G_3_H_CVA">{6}</SimpleData>
 </SchemaData></ExtendedData>
-    <Point><coordinates>{5},{4}</coordinates></Point>
+    <Point><coordinates>{4},{3}</coordinates></Point>
 </Placemark>
 '''
 
@@ -300,12 +295,11 @@ df_metadata = df_bd_h.copy()
 print (df_metadata.estado)
 
 ###################################################ejecucion
-kml = SHop.write_kml_humedad(df_metadata.index,df_bd_h,path_figs,path_kml_format,path_kml,g1)
-
-# res = os.system('rsync -r -v -a -z -e ssh %s* %s'%(ruta_graficas, ruta_var))
+kml = SHop.write_kml_humedad(df_metadata.index,df_bd_h,path_figs,path_kml_format,path_kml,g1,url_icono)
 ruta_var_kml = '%s@%s:/var/www/kml/01_Redes/'%(user2var,host2var)
 
-res = os.system('scp -r %s %s'%(path_kml, ruta_var_kml))
+# res = os.system('scp -r %s %s'%(path_kml, ruta_var_kml))
+res = os.system('rsync -r -v -a -z -e ssh %s %s'%(path_kml, ruta_var_kml))
 if res == 0:
     print ('Se copia kml en %s'%(ruta_var_kml))
 else:
