@@ -1,0 +1,1 @@
+Aquí se guardan los .png de los mapas de psat históricos para las animaciones del geoportal
