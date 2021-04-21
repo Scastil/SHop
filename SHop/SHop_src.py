@@ -1430,7 +1430,8 @@ def get_executionlists_all4all(ConfigList,ruta_out_rain,cu,starts_m,end,windows,
         
     return ListEjecs
 
-def get_executionlists_fromdf(ConfigList,ruta_out_rain,cu,starts_m,end,df_executionprops,df_xy_estH,
+def get_executionlists_fromdf(ConfigList,ruta_out_rain,cu,starts_m,end,df_executionprops,
+                              df_xy_estH = None,
                               warming_steps=48,dateformat_starts = '%Y-%m-%d %H:%M',
                               path_pant4rules = None,fecha_binsto = None):
     #rutas denpasos salida (configfile)
@@ -1522,19 +1523,20 @@ def get_qsim(ListEjecs,set_CI=True,save_hist=True,verbose = True):
         df_qsim.to_csv(L[10])
 
         #save df_HSsimresults
-        #operational HSsim - without warming steps
-        f=open(L[9]+'.StOhdr')
-        filelines=f.readlines()
-        f.close()
-        IDs=np.array([int(i.split(',')[0]) for i in filelines[5:]])
-        fechas=np.array([i.split(',')[-1].split(' ')[1] for i in filelines[5:]])
-        df_HSsim = pd.DataFrame(index = pd.to_datetime(fechas), columns = L[16].index)
-        for index,ID in zip(pd.to_datetime(fechas),IDs):
-            v,r = wmf.models.read_float_basin_ncol(L[9]+'.StObin',ID, cu.ncells, 5)
-            v[2][v[2]> wmf.models.max_gravita[0]] = wmf.models.max_gravita[0][v[2]> wmf.models.max_gravita[0]] #sumideros?
-            df_HSsim.loc[index] = [wmf.cu.basin_extract_var_by_point(cu.structure,(((v[0]+v[2])/(wmf.models.max_capilar+wmf.models.max_gravita))*100),L[16].values[i_esth],3,1,cu.ncells)[0] for i_esth in range(L[16].shape[0])]
+        if L[16] is not None:
+            #operational HSsim - without warming steps
+            f=open(L[9]+'.StOhdr')
+            filelines=f.readlines()
+            f.close()
+            IDs=np.array([int(i.split(',')[0]) for i in filelines[5:]])
+            fechas=np.array([i.split(',')[-1].split(' ')[1] for i in filelines[5:]])
+            df_HSsim = pd.DataFrame(index = pd.to_datetime(fechas), columns = L[16].index)
+            for index,ID in zip(pd.to_datetime(fechas),IDs):
+                v,r = wmf.models.read_float_basin_ncol(L[9]+'.StObin',ID, cu.ncells, 5)
+                v[2][v[2]> wmf.models.max_gravita[0]] = wmf.models.max_gravita[0][v[2]> wmf.models.max_gravita[0]] #sumideros?
+                df_HSsim.loc[index] = [wmf.cu.basin_extract_var_by_point(cu.structure,(((v[0]+v[2])/(wmf.models.max_capilar+wmf.models.max_gravita))*100),L[16].values[i_esth],3,1,cu.ncells)[0] for i_esth in range(L[16].shape[0])]
 
-        df_HSsim.loc[df_HSsim.index[L[13]:]].to_csv(L[14])
+            df_HSsim.loc[df_HSsim.index[L[13]:]].to_csv(L[14])
 
         # saving historical data
         if save_hist == False:#se crea
@@ -1559,17 +1561,6 @@ def get_qsim(ListEjecs,set_CI=True,save_hist=True,verbose = True):
             df_qsim0 = df_qsim0.sort_index()
             df_qsim0.to_csv(L[11]) # se guarda archivo hist. actualizado
 
-            # HSsim_ests_hist
-            df_HSsim0 = pd.read_csv(L[15], index_col=0, parse_dates= True) #abre archivo hist ya creado (con una corrida guardada.)
-            df_HSsim0.index = pd.to_datetime(df_HSsim0.index)
-            df_HSsim.index = pd.to_datetime(df_HSsim.index)
-            df_HSsim.columns = list(map(str,df_HSsim.columns))
-            df_HSsim0= df_HSsim0.append(df_HSsim)#se agrega corrida actual
-            df_HSsim0 = df_HSsim0.reset_index().drop_duplicates(subset='index',keep='last').set_index('index')
-            df_HSsim0 = df_HSsim0.dropna(how='all')
-            df_HSsim0 = df_HSsim0.sort_index()
-            df_HSsim0.to_csv(L[15]) # se guarda archivo hist. actualizado
-
             # MSsim_hist
             df_hs0 = pd.read_csv(L[12], index_col=0, parse_dates= True) #abre archivo hist ya creado (con una corrida guardada.)
             df_hs0.index = pd.to_datetime(df_hs0.index)
@@ -1583,6 +1574,19 @@ def get_qsim(ListEjecs,set_CI=True,save_hist=True,verbose = True):
             df_hs0 = df_hs0.dropna(how='all')
             df_hs0 = df_hs0.sort_index()
             df_hs0.to_csv(L[12]) # se guarda archivo hist. actualizado
+            
+            # HSsim_ests_hist
+            if L[16] is not None:
+                df_HSsim0 = pd.read_csv(L[15], index_col=0, parse_dates= True) #abre archivo hist ya creado (con una corrida guardada.)
+                df_HSsim0.index = pd.to_datetime(df_HSsim0.index)
+                df_HSsim.index = pd.to_datetime(df_HSsim.index)
+                df_HSsim.columns = list(map(str,df_HSsim.columns))
+                df_HSsim0= df_HSsim0.append(df_HSsim)#se agrega corrida actual
+                df_HSsim0 = df_HSsim0.reset_index().drop_duplicates(subset='index',keep='last').set_index('index')
+                df_HSsim0 = df_HSsim0.dropna(how='all')
+                df_HSsim0 = df_HSsim0.sort_index()
+                df_HSsim0.to_csv(L[15]) # se guarda archivo hist. actualizado
+                
         if verbose:
             print ('Config. '+L[4]+L[1]+'-'+L[-6]+' ejecutado')
 

@@ -113,7 +113,7 @@ print (ruta_out_rain_h)
 SHop.set_modelsettings(ConfigList)
 # set of executions
 ListEjecs_h =  SHop.get_executionlists_fromdf(ConfigList,ruta_out_rain_h,cu,starts_m_h,end_h,df_executionprops_h,
-                                         df_xy_estH,warming_steps=warming_steps, 
+                                         df_xy_estH=df_xy_estH,warming_steps=warming_steps, 
                                          dateformat_starts = dateformat_starts_h,
                                          path_pant4rules = ruta_out_rain_h)#,fecha_binsto = starts_m_h[0])
 
@@ -158,7 +158,7 @@ path_masks_csv = SHop.get_ruta(ConfigList,'ruta_proj')+SHop.get_ruta(ConfigList,
 df_pbasins = SHop.get_pradar_withinnc(path_r,cu,start,end,Dt,ests,path_masks_csv=path_masks_csv)
 
 #METADATOS BD HUMEDAD
-estsh = [107,118,188,237,235,1004,296,396,422,424,436,455] #set order for metadata. 
+estsh = [107,118,188,235,1004,296,396,422,424,436,455] #set order for metadata. 
 query = 'select codigo, nombreestacion,ciudad,estado,hd,red from estaciones where red in ("humedad","humedad_stevens","humedad_laderas_5te_rasp","humedad_stevens_laderas_rasp") and estado in ("A","P")'
 df_bd_h = hidrologia.bd.sql_query(query,server,user,passwd,dbname).set_index('codigo')
 df_bd_h.index = list(map(int,df_bd_h.index)) ; df_bd_h = df_bd_h.loc[estsh]
@@ -167,7 +167,7 @@ df_bd_h.tipo_sensor = list(map(int,df_bd_h.tipo_sensor.values))
 estsh = list(df_bd_h.index)
 
 #asignaciones
-codigos_pluvio = np.array([20,288,189,25,43,57,295,43,295,389,373,418])
+codigos_pluvio = np.array([20,288,189,43,57,295,43,295,389,373,418])
 #si en la consulta hay mas filas que pluvio, se descartan las filas que excden el size. puede que haya una estacion nueva y no nos hayan contado.
 #No se grafica hasta que se tengan todos los metadatos, 
 if df_bd_h.shape[0]>codigos_pluvio.size:
@@ -179,9 +179,9 @@ else:
 
 
 df_bd_h[['p_asociado','sensor_h','depths2drop','depths_laderas']] = pd.DataFrame([codigos_pluvio,
-                                                                       [[1,2,3],[1,3],[2,3],[2],[1,2,3],[1,2,3],[1,2],[1,2,3],[1,2,3],[1,2],[1],[1,2]],
-                                                          np.array([None,[2],[1],[1,3],None,[3],None,None,None,[3],[2,3],[3]]),
-                                                          np.array([None,None,None,None,None,None,None,None,None,['1','1.2'],['1.36'],['0.5','1']])],
+                                                                       [[1,2,3],[1,3],[2,3],[1,2,3],[1,2,3],[1,2],[1,2,3],[1,2,3],[1,2],[1],[1,2]],
+                                                          np.array([None,[2],[1],None,[3],None,None,None,[3],[2,3],[3]]),
+                                                          np.array([None,None,None,None,None,None,None,None,['1','1.2'],['1.36'],['0.5','1']])],
                                                           columns=df_bd_h.index, 
                                                           index = ['p_asociado','sensor_h','depths2drop','depths_laderas']).T
 
