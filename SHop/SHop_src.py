@@ -1396,7 +1396,7 @@ def get_rainfall2sim(ConfigList,cu,path_ncbasin,starts_m,end, #se corre el bin m
                              meanrain_ALL=False,save_bin=True,
                              path_res=ruta_rain,
                              umbral=0.005,verbose=verbose,
-                             complete_naninaccum = complete_naninaccum
+                             complete_naninaccum = complete_naninaccum,
                              zero_fill=zero_fill)
 
         obj = obj.loc[start:end]
