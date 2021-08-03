@@ -353,7 +353,7 @@ def bin_to_df(path,ncells,start=None,end=None,**kwargs):
 def get_radar_rain(start,end,Dt,cuenca,codigos,rutaNC,accum=False,path_tif=None,all_radextent=False,
                     mask=None,meanrain_ALL=True,path_masks_csv=None,complete_naninaccum=False,save_bin=False,
                    save_class = False,path_res=None,umbral=0.005,
-                   verbose=True):
+                   verbose=True, zero_fill = None):
 
     start,end = pd.to_datetime(start),pd.to_datetime(end)
     #hora UTC
@@ -400,7 +400,9 @@ def get_radar_rain(start,end,Dt,cuenca,codigos,rutaNC,accum=False,path_tif=None,
             final = fechaF+' '+hora_2
     else:
             final = fechaF
+
     datesDt = pd.date_range(inicio,final,freq = textdt+'s')
+
 
     #Obtiene las posiciones de acuerdo al dt para cada fecha, si no hay barrido en ese paso de tiempo se acumula 
     #elbarrido inmediatamente anterior.
@@ -435,6 +437,15 @@ def get_radar_rain(start,end,Dt,cuenca,codigos,rutaNC,accum=False,path_tif=None,
 
             PosDates.append(pos2)
 
+    # si se asigna, se agregas dates y PosDates para barridos en cero al final.
+    if zero_fill is not None: 
+        #se redefinen datesDt luego que los PosDates fueron asignados
+        final = (pd.to_datetime(final) + pd.Timedelta('%ss'%Dt*zero_fill)).strftime('%Y-%m-%d %H:%M')
+        datesDt = pd.date_range(inicio,final,freq = textdt+'s')
+        # se agrega a PosDates pasos del futuro con barridos en cero, y se cambia end.
+        end = end + pd.Timedelta('%ss'%Dt*zero_fill) #pasos de tiempo:steps, independiente del Dt
+        for steps in np.arange(zero_fill): PosDates.append([])
+
     # paso a hora local
     datesDt = datesDt - dt.timedelta(hours=5)
     datesDt = datesDt.to_pydatetime()
@@ -457,7 +468,7 @@ def get_radar_rain(start,end,Dt,cuenca,codigos,rutaNC,accum=False,path_tif=None,
             #boundaries
             shp = gpd.read_file(mask)
             poly = shp.geometry.unary_union
-            
+
             shp_mask = np.zeros([len(lats),len(longs)])
             for i in range(len(lats)):
                 for j in range(len(longs)):
@@ -543,60 +554,60 @@ def get_radar_rain(start,end,Dt,cuenca,codigos,rutaNC,accum=False,path_tif=None,
                     rConv = np.zeros(cu.ncells, dtype = int)   
                     rStra = np.zeros(cu.ncells, dtype = int)   
             try:
-                    #se lee y agrega lluvia de los nc en el intervalo.
-                    for c,p in enumerate(pos):
-                            #lista archivo leido
-                            if verbose:
-                                print (ListRutas[p])
-                            #Lee la imagen de radar para esa fecha
-                            g = netCDF4.Dataset(ListRutas[p])
-                            rainfield = g.variables['Rain'][:].T/(((len(pos)*3600)/Dt)*1000.0)
-                            RadProp = [g.ncols, g.nrows, g.xll, g.yll, g.dx, g.dx]
-                            #if all extent
-                            if all_radextent:
-                                radmatrix += rainfield
+                #se lee y agrega lluvia de los nc en el intervalo.
+                for c,p in enumerate(pos):
+                        #lista archivo leido
+                        if verbose:
+                            print (ListRutas[p])
+                        #Lee la imagen de radar para esa fecha
+                        g = netCDF4.Dataset(ListRutas[p])
+                        rainfield = g.variables['Rain'][:].T/(((len(pos)*3600)/Dt)*1000.0)
+                        RadProp = [g.ncols, g.nrows, g.xll, g.yll, g.dx, g.dx]
+                        #if all extent
+                        if all_radextent:
+                            radmatrix += rainfield
 
-                            #if mask
-                            if mask is not None and type(mask) == str:
-                                rvec += (rainfield*shp_mask)[np.unique(x_wh)[0]:np.unique(x_wh)[-1],np.unique(y_wh)[0]:np.unique(y_wh)[-1]]
-                            elif mask is not None and type(mask) == list:
-                                rvec += rainfield[np.unique(x_wh)[0]:np.unique(x_wh)[-1],np.unique(y_wh)[0]:np.unique(y_wh)[-1]]
-                            # on WMF.
-                            else:
-                                #Agrega la lluvia en el intervalo 
-                                rvec += cu.Transform_Map2Basin(rainfield,RadProp)
-                                if save_class:
-                                    ConvStra = cu.Transform_Map2Basin(g.variables['Conv_Strat'][:].T, RadProp)
-                                    # 1-stra, 2-conv
-                                    rConv = np.copy(ConvStra) 
-                                    rConv[rConv == 1] = 0; rConv[rConv == 2] = 1
-                                    rStra = np.copy(ConvStra)
-                                    rStra[rStra == 2] = 0 
-                                    rvec[(rConv == 0) & (rStra == 0)] = 0
-                                    Conv[rvec == 0] = 0
-                                    Stra[rvec == 0] = 0
-                            #Cierra el netCDF
-                            g.close()
-                    #muletilla
-                    path = 'bla'
-            except:
-                    print ('error - no field found ')
-                    path = ''
-                    if accum:
-                        if mask is not None:
-                            rvec += np.zeros(shape = field.shape)
-                            rvec = np.zeros(shape = field.shape)
+                        #if mask
+                        if mask is not None and type(mask) == str:
+                            rvec += (rainfield*shp_mask)[np.unique(x_wh)[0]:np.unique(x_wh)[-1],np.unique(y_wh)[0]:np.unique(y_wh)[-1]]
+                        elif mask is not None and type(mask) == list:
+                            rvec += rainfield[np.unique(x_wh)[0]:np.unique(x_wh)[-1],np.unique(y_wh)[0]:np.unique(y_wh)[-1]]
+                        # on WMF.
                         else:
-                            rvec_accum += np.zeros(cu.ncells)
-                            rvec = np.zeros(cu.ncells)
-                    else:
-                        if mask is not None:
-                            rvec = np.zeros(shape = field.shape)
-                        else:
-                            rvec = np.zeros(cu.ncells)
+                            #Agrega la lluvia en el intervalo 
+                            rvec += cu.Transform_Map2Basin(rainfield,RadProp)
                             if save_class:
-                                rConv = np.zeros(cu.ncells)
-                                rStra = np.zeros(cu.ncells)
+                                ConvStra = cu.Transform_Map2Basin(g.variables['Conv_Strat'][:].T, RadProp)
+                                # 1-stra, 2-conv
+                                rConv = np.copy(ConvStra) 
+                                rConv[rConv == 1] = 0; rConv[rConv == 2] = 1
+                                rStra = np.copy(ConvStra)
+                                rStra[rStra == 2] = 0 
+                                rvec[(rConv == 0) & (rStra == 0)] = 0
+                                Conv[rvec == 0] = 0
+                                Stra[rvec == 0] = 0
+                        #Cierra el netCDF
+                        g.close()
+                #muletilla
+                path = 'bla'
+            except:
+                print ('error - no field found ')
+                path = ''
+                if accum:
+                    if mask is not None:
+                        rvec += np.zeros(shape = field.shape)
+                        rvec = np.zeros(shape = field.shape)
+                    else:
+                        rvec_accum += np.zeros(cu.ncells)
+                        rvec = np.zeros(cu.ncells)
+                else:
+                    if mask is not None:
+                        rvec = np.zeros(shape = field.shape)
+                    else:
+                        rvec = np.zeros(cu.ncells)
+                        if save_class:
+                            rConv = np.zeros(cu.ncells)
+                            rStra = np.zeros(cu.ncells)
                     if all_radextent:
                         radmatrix += np.zeros((1728, 1728))
             #acumula dentro del for que recorre las fechas
@@ -658,7 +669,7 @@ def get_radar_rain(start,end,Dt,cuenca,codigos,rutaNC,accum=False,path_tif=None,
                 except:
                     mean.append(np.nan)
                 df.loc[dates.strftime('%Y-%m-%d %H:%M:%S')]=mean
-                
+
             elif mask is None and save_bin == True and len(codigos)==1 and path_res is None: #si es una cuenca pero no se quiere guardar binarios.
                 mean = []
                 #guarda en df meanrainfall.
@@ -709,7 +720,7 @@ def get_radar_rain(start,end,Dt,cuenca,codigos,rutaNC,accum=False,path_tif=None,
         return df,radmatrix
     else:
         return df     
-
+    
 def get_radar_rain_OP(start,end,Dt,cuenca,codigos,rutaNC,accum=False,path_tif=None,all_radextent=False,
                       meanrain_ALL=True,complete_naninaccum=False, evs_hist=False,save_bin=False,save_class = False,
                       path_res=None,umbral=0.005,include_escenarios = None,
@@ -1344,7 +1355,7 @@ def get_rainfall2sim(ConfigList,cu,path_ncbasin,starts_m,end, #se corre el bin m
                      Dt= float(wmf.models.dt),include_escenarios=None,
                      evs_hist= False,
                      check_file=True,stepback_start = '%ss'%int(wmf.models.dt *1),
-                     complete_naninaccum=True,verbose=False):
+                     complete_naninaccum=True,verbose=False,zero_fill=None):
     
     #generacion o lectura de lluvia
     start,end = starts_m[-1],end
@@ -1385,7 +1396,8 @@ def get_rainfall2sim(ConfigList,cu,path_ncbasin,starts_m,end, #se corre el bin m
                              meanrain_ALL=False,save_bin=True,
                              path_res=ruta_rain,
                              umbral=0.005,verbose=verbose,
-                             complete_naninaccum = complete_naninaccum)
+                             complete_naninaccum = complete_naninaccum
+                             zero_fill=zero_fill)
 
         obj = obj.loc[start:end]
     
